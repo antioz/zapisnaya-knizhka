@@ -93,9 +93,9 @@ export async function structure(text, comment, imageBase64 = null) {
 
   if (imageBase64) {
     const visionModels = [
-      'google/gemini-2.0-flash-exp:free',
-      'qwen/qwen2.5-vl-72b-instruct:free',
-      'google/gemini-flash-1.5-8b:free'
+      'baidu/qianfan-ocr-fast:free',
+      'google/gemma-4-31b-it:free',
+      'google/gemma-4-26b-a4b-it:free'
     ]
     messages.push({
       role: 'user',

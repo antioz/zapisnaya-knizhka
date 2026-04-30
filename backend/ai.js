@@ -92,6 +92,11 @@ export async function structure(text, comment, imageBase64 = null) {
   ]
 
   if (imageBase64) {
+    const visionModels = [
+      'meta-llama/llama-4-maverick-17b-128e-instruct',
+      'meta-llama/llama-4-scout-17b-16e-instruct',
+      'llama-3.2-90b-vision-preview'
+    ]
     messages.push({
       role: 'user',
       content: [
@@ -99,13 +104,15 @@ export async function structure(text, comment, imageBase64 = null) {
         { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
       ]
     })
-    const res = await visionClient.chat.completions.create({
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-      messages,
-      max_tokens: 500,
-      temperature: 0.2
-    })
-    return JSON.parse(res.choices[0].message.content.trim())
+    for (const model of visionModels) {
+      try {
+        const res = await visionClient.chat.completions.create({ model, messages, max_tokens: 500, temperature: 0.2 })
+        return JSON.parse(res.choices[0].message.content.trim())
+      } catch (e) {
+        console.error(`Vision model ${model} failed:`, e.message)
+      }
+    }
+    throw new Error('vision_unavailable')
   } else {
     messages.push({
       role: 'user',

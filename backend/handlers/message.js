@@ -157,7 +157,14 @@ async function _handleMessage(ctx, bot) {
   if (limits.type === 'photo') {
     const photo = msg.photo[msg.photo.length - 1]
     const base64 = await getPhotoBase64(ctx, photo)
-    structured = await structure('', comment, base64)
+    try {
+      structured = await structure('', comment, base64)
+    } catch (e) {
+      if (e.message === 'vision_unavailable') {
+        return ctx.reply('Не могу прочитать скрин — опиши текстом что там написано')
+      }
+      throw e
+    }
   } else {
     structured = await structure(limits.text, comment)
     if (limits.truncated) await ctx.reply('⚠️ Текст обрезан до 1000 символов')

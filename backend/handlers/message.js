@@ -36,6 +36,26 @@ async function getPhotoBase64(ctx, photo) {
   return Buffer.from(buf).toString('base64')
 }
 
+function extractIdentifiers(data) {
+  const ids = []
+  for (const v of Object.values(data || {})) {
+    const s = String(v).toLowerCase()
+    if (/\+?[\d\s\-()]{7,}/.test(s)) ids.push(s.replace(/[\s\-()]/g, ''))  // phone
+    if (/@\w+/.test(s)) ids.push(s.match(/@\w+/)[0])  // @nick
+    if (/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/.test(s)) ids.push(s.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/)[0])  // email
+  }
+  return ids
+}
+
+function findDuplicateByIdentifier(records, newData) {
+  const newIds = extractIdentifiers(newData)
+  if (!newIds.length) return null
+  return records.find(r => {
+    const existing = extractIdentifiers(r.data)
+    return existing.some(id => newIds.includes(id))
+  }) || null
+}
+
 function hasValuableInfo(text) {
   return /\+?[\d\s\-()]{7,}/.test(text) ||  // phone
     /https?:\/\/|t\.me\/|@\w+/.test(text) ||  // url or @
@@ -59,6 +79,17 @@ export function setupSaveCallbacks(bot) {
     pendingCache.delete(String(ctx.match[1]))
     await ctx.answerCbQuery()
     await ctx.editMessageText('Не сохранил.')
+  })
+
+  bot.action(/^overwrite_save:(\d+)$/, async (ctx) => {
+    const telegramId = String(ctx.match[1])
+    const pending = pendingCache.get(telegramId)
+    if (!pending) return ctx.answerCbQuery('Время вышло')
+    pendingCache.delete(telegramId)
+    await ctx.answerCbQuery()
+    await ctx.editMessageText('Сохраняю заново...')
+    const user = await getUser(telegramId)
+    await doSave(ctx, user, pending.structured, pending.record)
   })
 }
 
@@ -247,6 +278,28 @@ async function _handleMessage(ctx, bot) {
       ...structured.data,
       ...(forwardMeta || {})
     }
+  }
+
+  // duplicate check by phone/nick/email
+  const dupRecord = findDuplicateByIdentifier(db0.records, record.data)
+  if (dupRecord) {
+    pendingCache.set(String(telegramId), { structured, record })
+    setTimeout(() => pendingCache.delete(String(telegramId)), 2 * 60_000)
+    const dupLines = [`📇 *${capitalize(dupRecord.category)}*`]
+    Object.entries(dupRecord.data || {}).forEach(([k, v]) => { if (v) dupLines.push(`${k}: ${v}`) })
+    if (dupRecord.comment) dupLines.push(`💬 "${dupRecord.comment}"`)
+    return ctx.reply(
+      `Совпадение с существующей записью:\n\n${dupLines.join('\n')}\n\nСохраняем заново?`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '✅ Да, сохранить', callback_data: `overwrite_save:${telegramId}` },
+            { text: '❌ Нет', callback_data: `cancel_save:${telegramId}` }
+          ]]
+        }
+      }
+    )
   }
 
   // low-value text: ask confirmation before saving

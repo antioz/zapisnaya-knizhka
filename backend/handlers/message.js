@@ -214,7 +214,7 @@ async function sendCard(ctx, rec, saved = false) {
   if (rec.tags?.length) lines.push(`Теги: ${rec.tags.join(', ')}`)
   const sent = await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown', ...MENU })
   setTimeout(() => {
-    ctx.telegram.deleteMessage(sent.chat.id, sent.message_id).catch(() => {})
+    ctx.telegram.deleteMessage(sent.chat.id, sent.message_id).catch(e => console.error('delete failed:', e.message))
   }, 60_000)
 }
 

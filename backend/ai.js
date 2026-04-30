@@ -59,7 +59,16 @@ export async function structure(text, comment, imageBase64 = null) {
   const messages = [
     {
       role: 'system',
-      content: `Ты структурируешь записи для личной записной книжки. Категории: ${CATEGORIES}.
+      content: `Ты структурируешь записи для личной записной книжки.
+
+Категории и когда использовать:
+- "контакт" — есть человек, компания, телефон, telegram, email, имя
+- "место" — адрес, заведение, локация, город
+- "цена/услуга" — стоимость, прайс, тариф, услуга с ценой
+- "идея" — мысль, план, задача, заметка без контакта
+- "ссылка" — URL, сайт, канал, бот
+- "другое" — только если не подходит ни одна из выше
+
 Верни JSON строго в формате:
 {
   "category": "...",
@@ -75,7 +84,7 @@ export async function structure(text, comment, imageBase64 = null) {
     messages.push({
       role: 'user',
       content: [
-        { type: 'text', text: `Прочитай текст с изображения и структурируй как запись.\nКомментарий пользователя: "${comment || ''}"` },
+        { type: 'text', text: `Прочитай текст с изображения и структурируй как запись.\nКомментарий пользователя: "${comment || ''}"\n\nВерни только JSON без markdown.` },
         { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
       ]
     })

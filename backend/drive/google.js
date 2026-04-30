@@ -28,20 +28,28 @@ export async function initUserFile(telegramId, encryptedToken) {
   const drive = await getDrive(encryptedToken)
   const folderId = await ensureFolder(drive)
 
-  const existing = await drive.files.list({
+  // search in folder first
+  let existing = await drive.files.list({
     q: `name='${FILE_NAME}' and '${folderId}' in parents and trashed=false`,
     fields: 'files(id)'
   })
 
-  let fileId
-  const emptyData = JSON.stringify({ version: 1, records: [] }, null, 2)
+  // fallback: search anywhere in Drive (in case folder was recreated)
+  if (existing.data.files.length === 0) {
+    existing = await drive.files.list({
+      q: `name='${FILE_NAME}' and trashed=false`,
+      fields: 'files(id)',
+      orderBy: 'createdTime'
+    })
+  }
 
+  let fileId
   if (existing.data.files.length > 0) {
     fileId = existing.data.files[0].id
   } else {
     const file = await drive.files.create({
       requestBody: { name: FILE_NAME, parents: [folderId] },
-      media: { mimeType: 'application/json', body: emptyData },
+      media: { mimeType: 'application/json', body: JSON.stringify({ version: 1, records: [] }, null, 2) },
       fields: 'id'
     })
     fileId = file.data.id

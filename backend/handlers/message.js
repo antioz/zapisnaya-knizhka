@@ -158,16 +158,13 @@ export async function handleMessage(ctx, bot) {
   db.records.push(record)
   await writeUserJson(user, db)
 
-  const preview = Object.entries(record.data)
-    .slice(0, 3)
-    .map(([k, v]) => `${v}`)
-    .join(' · ')
-
-  await ctx.reply(`✅ ${capitalize(record.category)} сохранён${preview ? '\n' + preview : ''}`)
+  await sendCard(ctx, record, true)
 }
 
-function sendCard(ctx, rec) {
-  const lines = [`📇 *${rec.category}*`]
+function sendCard(ctx, rec, saved = false) {
+  const lines = []
+  if (saved) lines.push(`✅ Сохранено`)
+  lines.push(`📇 *${capitalize(rec.category)}*`)
   if (rec.data) {
     Object.entries(rec.data).forEach(([k, v]) => {
       if (v) lines.push(`${k}: ${v}`)

@@ -16,7 +16,7 @@ app.use(express.json())
 const MENU = {
   reply_markup: {
     keyboard: [
-      ['📁 Моя книжка', 'Спасибо'],
+      ['📁 Записи', 'Спасибо'],
       ['Канал', '⚙️ Настройки']
     ],
     resize_keyboard: true
@@ -66,7 +66,7 @@ bot.start(async (ctx) => {
 })
 
 // menu buttons
-bot.hears('📁 Моя книжка', async (ctx) => {
+bot.hears('📁 Записи', async (ctx) => {
   const user = await getUser(ctx.from.id)
   if (!user?.drive_file_id) return ctx.reply('Сначала подключи хранилище')
   const url = user.drive_provider === 'yandex'

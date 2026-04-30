@@ -194,7 +194,7 @@ async function _handleMessage(ctx, bot) {
 const MENU = {
   reply_markup: {
     keyboard: [
-      ['📁 Моя книжка', 'Спасибо'],
+      ['📁 Записи', 'Спасибо'],
       ['Канал', '⚙️ Настройки']
     ],
     resize_keyboard: true

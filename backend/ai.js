@@ -1,15 +1,20 @@
 import OpenAI from 'openai'
 
 const client = new OpenAI({
-  baseURL: 'https://api.deepseek.com',
-  apiKey: process.env.DEEPSEEK_API_KEY
+  baseURL: 'https://api.groq.com/openai/v1',
+  apiKey: process.env.GROQ_API_KEY
+})
+
+const visionClient = new OpenAI({
+  baseURL: 'https://api.groq.com/openai/v1',
+  apiKey: process.env.GROQ_API_KEY
 })
 
 const CATEGORIES = 'контакт, место, цена/услуга, идея, ссылка, другое'
 
 export async function classify(text) {
   const res = await client.chat.completions.create({
-    model: 'deepseek-chat',
+    model: 'llama-3.3-70b-versatile',
     messages: [
       {
         role: 'system',
@@ -50,6 +55,13 @@ export async function structure(text, comment, imageBase64 = null) {
         { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
       ]
     })
+    const res = await visionClient.chat.completions.create({
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      messages,
+      max_tokens: 500,
+      temperature: 0.2
+    })
+    return JSON.parse(res.choices[0].message.content.trim())
   } else {
     messages.push({
       role: 'user',
@@ -58,7 +70,7 @@ export async function structure(text, comment, imageBase64 = null) {
   }
 
   const res = await client.chat.completions.create({
-    model: 'deepseek-chat',
+    model: 'llama-3.3-70b-versatile',
     messages,
     max_tokens: 500,
     temperature: 0.2
@@ -69,7 +81,7 @@ export async function structure(text, comment, imageBase64 = null) {
 
 export async function search(query, records) {
   const res = await client.chat.completions.create({
-    model: 'deepseek-chat',
+    model: 'llama-3.3-70b-versatile',
     messages: [
       {
         role: 'system',
@@ -98,7 +110,7 @@ export async function search(query, records) {
 
 export async function checkContentSafety(text) {
   const res = await client.chat.completions.create({
-    model: 'deepseek-chat',
+    model: 'llama-3.3-70b-versatile',
     messages: [
       {
         role: 'system',

@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { Telegraf } from 'telegraf'
 import express from 'express'
-import { handleMessage } from './handlers/message.js'
+import { handleMessage, setupSaveCallbacks } from './handlers/message.js'
 import { setupModerationCallbacks } from './handlers/moderation.js'
 import { getAuthUrl as getGoogleAuthUrl, handleCallback as handleGoogleCallback } from './auth/google.js'
 import { getAuthUrl as getYandexAuthUrl, handleCallback as handleYandexCallback } from './auth/yandex.js'
@@ -45,6 +45,7 @@ bot.action('connect:yandex', async (ctx) => {
 })
 
 setupModerationCallbacks(bot)
+setupSaveCallbacks(bot)
 
 // /start command
 bot.start(async (ctx) => {

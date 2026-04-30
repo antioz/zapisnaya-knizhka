@@ -9,6 +9,10 @@ import { getUser } from '../db.js'
 
 // session cache for drill-down search results
 const searchCache = new Map()
+// pending confirmation before save
+const pendingCache = new Map()
+// pending closed-account forward (waiting for @username)
+const pendingForwardCache = new Map()
 
 function getDrive(provider) {
   return provider === 'yandex' ? yandexDrive : googleDrive
@@ -30,6 +34,32 @@ async function getPhotoBase64(ctx, photo) {
   const res = await fetch(url)
   const buf = await res.arrayBuffer()
   return Buffer.from(buf).toString('base64')
+}
+
+function hasValuableInfo(text) {
+  return /\+?[\d\s\-()]{7,}/.test(text) ||  // phone
+    /https?:\/\/|t\.me\/|@\w+/.test(text) ||  // url or @
+    /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/.test(text) ||  // email
+    text.length > 40  // long enough to likely have substance
+}
+
+export function setupSaveCallbacks(bot) {
+  bot.action(/^confirm_save:(\d+)$/, async (ctx) => {
+    const telegramId = String(ctx.match[1])
+    const pending = pendingCache.get(telegramId)
+    if (!pending) return ctx.answerCbQuery('Время вышло')
+    pendingCache.delete(telegramId)
+    await ctx.answerCbQuery()
+    await ctx.editMessageText('Сохраняю...')
+    const user = await getUser(telegramId)
+    await doSave(ctx, user, pending.structured, pending.record)
+  })
+
+  bot.action(/^cancel_save:(\d+)$/, async (ctx) => {
+    pendingCache.delete(String(ctx.match[1]))
+    await ctx.answerCbQuery()
+    await ctx.editMessageText('Не сохранил.')
+  })
 }
 
 export async function handleMessage(ctx, bot) {
@@ -79,6 +109,28 @@ async function _handleMessage(ctx, bot) {
 
   const comment = msg.caption || ''
   const forwardMeta = extractForwardMeta(msg)
+
+  // closed-account forward: waiting for @username clarification
+  if (limits.type === 'text') {
+    const pendingFwd = pendingForwardCache.get(telegramId)
+    if (pendingFwd) {
+      const text = limits.text.trim()
+      // accept @username or a link
+      if (/^@\w+$/.test(text) || /https?:\/\/|t\.me\//.test(text)) {
+        pendingForwardCache.delete(telegramId)
+        pendingFwd.record.data.источник_tg = text
+        const db = await readUserJson(user)
+        const idx = db.records.findIndex(r => r.id === pendingFwd.record.id)
+        if (idx !== -1) {
+          db.records[idx] = pendingFwd.record
+          await writeUserJson(user, db)
+        }
+        return ctx.reply(`Обновил: добавил ${text}`)
+      } else {
+        pendingForwardCache.delete(telegramId)
+      }
+    }
+  }
 
   // drill-down: user replies with number or name to previous search
   if (limits.type === 'text') {
@@ -183,11 +235,39 @@ async function _handleMessage(ctx, bot) {
     }
   }
 
+  // low-value text: ask confirmation before saving
+  if (limits.type === 'text' && !hasValuableInfo(limits.text)) {
+    pendingCache.set(String(telegramId), { structured, record })
+    setTimeout(() => pendingCache.delete(String(telegramId)), 2 * 60_000)
+    return ctx.reply(
+      `Тут нет очевидной ценной инфы — точно сохранить?\n\n_${limits.text}_`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '✅ Сохранить', callback_data: `confirm_save:${telegramId}` },
+            { text: '❌ Не надо', callback_data: `cancel_save:${telegramId}` }
+          ]]
+        }
+      }
+    )
+  }
+
+  await doSave(ctx, user, structured, record)
+
+  // closed account forward: prompt for @username
+  if (msg.forward_sender_name && !msg.forward_from && !msg.forward_from_chat) {
+    pendingForwardCache.set(telegramId, { record })
+    setTimeout(() => pendingForwardCache.delete(telegramId), 5 * 60_000)
+    await ctx.reply('Аккаунт закрыт, сохранил только имя. Если знаешь @username — кинь следующим сообщением.')
+  }
+}
+
+async function doSave(ctx, user, structured, record) {
   const db = await readUserJson(user)
   db.records.push(record)
   await writeUserJson(user, db)
-
-  searchCache.set(`last_saved_${telegramId}`, record)
+  searchCache.set(`last_saved_${ctx.from?.id || record.id}`, record)
   await sendCard(ctx, record, true)
 }
 

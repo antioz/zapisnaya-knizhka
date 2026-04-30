@@ -201,7 +201,7 @@ const MENU = {
   }
 }
 
-function sendCard(ctx, rec, saved = false) {
+async function sendCard(ctx, rec, saved = false) {
   const lines = []
   if (saved) lines.push(`✅ Сохранено`)
   lines.push(`📇 *${capitalize(rec.category)}*`)
@@ -212,7 +212,10 @@ function sendCard(ctx, rec, saved = false) {
   }
   if (rec.comment) lines.push(`💬 "${rec.comment}"`)
   if (rec.tags?.length) lines.push(`Теги: ${rec.tags.join(', ')}`)
-  return ctx.reply(lines.join('\n'), { parse_mode: 'Markdown', ...MENU })
+  const sent = await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown', ...MENU })
+  setTimeout(() => {
+    ctx.telegram.deleteMessage(sent.chat.id, sent.message_id).catch(() => {})
+  }, 60_000)
 }
 
 function formatListItem(rec) {

@@ -46,6 +46,25 @@ bot.action('connect:yandex', async (ctx) => {
 
 setupModerationCallbacks(bot)
 
+// /start command
+bot.start(async (ctx) => {
+  const user = await getUser(ctx.from.id)
+  if (user?.encrypted_token) {
+    return ctx.reply('Кидай что хочешь сохранить — или напиши что найти.')
+  }
+  return ctx.reply(
+    'Привет. Я чуть умней записной книжки. Помогаю хранить записи и находить их по запросам. Например, сохраняй прилетающие контакты, а когда нужно будет найти что-то по теме, просто напиши мне: «трактор Клин» или «лучшая шаурма на Рязанском проспекте», чем ты там ещё увлекаешься. Ни к каким твоим данным доступа не имею. Но всё равно совет: не надо хранить чувствительную информацию в интернете.',
+    {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: 'Google Drive', callback_data: 'connect:google' },
+          { text: 'Яндекс Диск', callback_data: 'connect:yandex' }
+        ]]
+      }
+    }
+  )
+})
+
 // menu buttons
 bot.hears('📁 Моя книжка', async (ctx) => {
   const user = await getUser(ctx.from.id)

@@ -1,0 +1,19 @@
+{
+  "name": "zapisnaya-knizhka",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "telegraf": "^4.16.3",
+    "openai": "^4.52.0",
+    "googleapis": "^144.0.0",
+    "@supabase/supabase-js": "^2.44.4",
+    "express": "^4.19.2",
+    "dotenv": "^16.4.5",
+    "uuid": "^10.0.0",
+    "node-fetch": "^3.3.2"
+  }
+}

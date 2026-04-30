@@ -100,7 +100,7 @@ export async function structure(text, comment, imageBase64 = null) {
     messages.push({
       role: 'user',
       content: [
-        { type: 'text', text: `Прочитай текст с изображения и структурируй как запись.\nКомментарий пользователя: "${comment || ''}"\n\nВерни только JSON без markdown.` },
+        { type: 'text', text: `Прочитай ВЕСЬ текст с изображения и структурируй как запись. Обязательно извлеки: @username (telegram-handle), ссылки (http/t.me), телефоны, имена, описания.\nКомментарий пользователя: "${comment || ''}"\n\nВерни только JSON без markdown.` },
         { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
       ]
     })

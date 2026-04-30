@@ -56,8 +56,16 @@ bot.hears('📁 Моя книжка', async (ctx) => {
   await ctx.reply(`Твоя записная книжка:\n${url}`)
 })
 
-bot.hears('☕ Поддержать', (ctx) => ctx.reply('Спасибо! ☕\nhttps://pay.cloudtips.ru/p/your-link'))
-bot.hears('📢 Канал', (ctx) => ctx.reply('Подписывайся: https://t.me/your_channel'))
+bot.hears('☕ Поддержать', (ctx) => ctx.reply('Спасибо! ☕', {
+  reply_markup: {
+    inline_keyboard: [[{ text: 'Спасибо', url: 'https://tbank.ru/cf/5FJG7hrT28' }]]
+  }
+}))
+bot.hears('📢 Канал', (ctx) => ctx.reply('Подписывайся 👇', {
+  reply_markup: {
+    inline_keyboard: [[{ text: '@webthreesome', url: 'https://t.me/webthreesome' }]]
+  }
+}))
 bot.hears('⚙️ Настройки', async (ctx) => {
   await ctx.reply('Настройки:', {
     reply_markup: {

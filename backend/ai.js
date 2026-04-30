@@ -18,17 +18,41 @@ export async function classify(text) {
     messages: [
       {
         role: 'system',
-        content: 'Ты помощник для классификации сообщений. Отвечай ТОЛЬКО одним словом.'
+        content: 'Ты помощник для классификации сообщений. Отвечай ТОЛЬКО одним словом: SAVE, SEARCH или EDIT.\nEDIT — если пользователь просит исправить, изменить, добавить или удалить что-то в последней записи.'
       },
       {
         role: 'user',
-        content: `Это сохранение новой информации или поисковый запрос?\n\n"${text}"\n\nОтветь: SAVE или SEARCH`
+        content: `Классифицируй сообщение:\n\n"${text}"\n\nОтветь: SAVE, SEARCH или EDIT`
       }
     ],
     max_tokens: 10,
     temperature: 0
   })
-  return res.choices[0].message.content.trim().toUpperCase().includes('SEARCH') ? 'SEARCH' : 'SAVE'
+  const result = res.choices[0].message.content.trim().toUpperCase()
+  if (result.includes('SEARCH')) return 'SEARCH'
+  if (result.includes('EDIT')) return 'EDIT'
+  return 'SAVE'
+}
+
+export async function editRecord(command, record) {
+  const res = await client.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    messages: [
+      {
+        role: 'system',
+        content: `Ты редактируешь запись в записной книжке по команде пользователя.
+Верни обновлённую запись строго в том же JSON формате что получил.
+Без markdown, только JSON.`
+      },
+      {
+        role: 'user',
+        content: `Команда: "${command}"\n\nТекущая запись:\n${JSON.stringify(record, null, 2)}`
+      }
+    ],
+    max_tokens: 600,
+    temperature: 0.1
+  })
+  return JSON.parse(res.choices[0].message.content.trim())
 }
 
 export async function structure(text, comment, imageBase64 = null) {

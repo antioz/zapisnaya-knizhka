@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid'
-import { classify, structure, search, checkContentSafety } from '../ai.js'
+import { classify, structure, search, editRecord, checkContentSafety } from '../ai.js'
 import { checkLimits } from './limits.js'
 import { extractForwardMeta } from './forward.js'
 import { checkRateLimit, handleViolation } from './moderation.js'
@@ -104,6 +104,19 @@ export async function handleMessage(ctx, bot) {
 
   const mode = limits.type === 'photo' ? 'SAVE' : await classify(textForClassify)
 
+  if (mode === 'EDIT') {
+    const lastSaved = searchCache.get(`last_saved_${telegramId}`)
+    if (!lastSaved) return ctx.reply('Не помню последнюю запись. Найди её через поиск и уточни что исправить.')
+    const db = await readUserJson(user)
+    const idx = db.records.findIndex(r => r.id === lastSaved.id)
+    if (idx === -1) return ctx.reply('Запись не найдена.')
+    const updated = await editRecord(limits.text, lastSaved)
+    db.records[idx] = updated
+    await writeUserJson(user, db)
+    searchCache.set(`last_saved_${telegramId}`, updated)
+    return sendCard(ctx, updated, false)
+  }
+
   if (mode === 'SEARCH') {
     const db = await readUserJson(user)
     const result = await search(textForClassify, db.records)
@@ -158,6 +171,7 @@ export async function handleMessage(ctx, bot) {
   db.records.push(record)
   await writeUserJson(user, db)
 
+  searchCache.set(`last_saved_${telegramId}`, record)
   await sendCard(ctx, record, true)
 }
 

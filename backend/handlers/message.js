@@ -33,6 +33,15 @@ async function getPhotoBase64(ctx, photo) {
 }
 
 export async function handleMessage(ctx, bot) {
+  try {
+    return await _handleMessage(ctx, bot)
+  } catch (e) {
+    console.error('handleMessage error:', e)
+    await ctx.reply('Что-то пошло не так. Попробуй ещё раз.')
+  }
+}
+
+async function _handleMessage(ctx, bot) {
   const telegramId = ctx.from.id
   const username = ctx.from.username
 

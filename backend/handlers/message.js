@@ -191,6 +191,16 @@ async function _handleMessage(ctx, bot) {
   await sendCard(ctx, record, true)
 }
 
+const MENU = {
+  reply_markup: {
+    keyboard: [
+      ['📁 Моя книжка', 'Спасибо'],
+      ['Канал', '⚙️ Настройки']
+    ],
+    resize_keyboard: true
+  }
+}
+
 function sendCard(ctx, rec, saved = false) {
   const lines = []
   if (saved) lines.push(`✅ Сохранено`)
@@ -202,7 +212,7 @@ function sendCard(ctx, rec, saved = false) {
   }
   if (rec.comment) lines.push(`💬 "${rec.comment}"`)
   if (rec.tags?.length) lines.push(`Теги: ${rec.tags.join(', ')}`)
-  return ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' })
+  return ctx.reply(lines.join('\n'), { parse_mode: 'Markdown', ...MENU })
 }
 
 function formatListItem(rec) {

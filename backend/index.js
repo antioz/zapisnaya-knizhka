@@ -86,7 +86,7 @@ bot.hears('Канал', (ctx) => ctx.reply('Подписывайся 👇', {
   }
 }))
 bot.hears('⚙️ Настройки', async (ctx) => {
-  await ctx.reply('Настройки:', {
+  await ctx.reply('Можно сменить хранилище, но базы тоже будут разные', {
     reply_markup: {
       inline_keyboard: [[
         { text: '🔄 Сменить хранилище', callback_data: 'settings:reset' }

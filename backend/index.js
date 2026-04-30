@@ -16,8 +16,8 @@ app.use(express.json())
 const MENU = {
   reply_markup: {
     keyboard: [
-      ['📁 Моя книжка', '☕ Поддержать'],
-      ['📢 Канал', '⚙️ Настройки']
+      ['📁 Моя книжка', 'Спасибо'],
+      ['Канал', '⚙️ Настройки']
     ],
     resize_keyboard: true
   }
@@ -56,12 +56,12 @@ bot.hears('📁 Моя книжка', async (ctx) => {
   await ctx.reply(`Твоя записная книжка:\n${url}`)
 })
 
-bot.hears('☕ Поддержать', (ctx) => ctx.reply('Спасибо! ☕', {
+bot.hears('Спасибо', (ctx) => ctx.reply('Спасибо! ☕', {
   reply_markup: {
     inline_keyboard: [[{ text: 'Спасибо', url: 'https://tbank.ru/cf/5FJG7hrT28' }]]
   }
 }))
-bot.hears('📢 Канал', (ctx) => ctx.reply('Подписывайся 👇', {
+bot.hears('Канал', (ctx) => ctx.reply('Подписывайся 👇', {
   reply_markup: {
     inline_keyboard: [[{ text: '@webthreesome', url: 'https://t.me/webthreesome' }]]
   }

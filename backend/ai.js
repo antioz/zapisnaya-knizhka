@@ -119,6 +119,9 @@ export async function search(query, records) {
       {
         role: 'system',
         content: `Ты ищешь записи в личной записной книжке.
+Ищи по ВСЕМ полям: data, comment, raw, tags, category — включая частичное совпадение и похожие слова.
+Если запрос — название организации или имя, ищи его в любом поле.
+
 Верни JSON строго в формате:
 {
   "results": [
@@ -127,6 +130,7 @@ export async function search(query, records) {
   "format": "cards" | "list"
 }
 "cards" если 1-2 результата, "list" если больше.
+Если ничего не найдено — верни { "results": [], "format": "cards" }.
 Без markdown, только JSON.`
       },
       {

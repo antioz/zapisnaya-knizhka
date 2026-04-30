@@ -205,6 +205,18 @@ async function _handleMessage(ctx, bot) {
   }
 
   // SAVE
+  // deduplication: check before calling AI
+  const db0 = await readUserJson(user)
+  if (limits.type === 'photo') {
+    const photo = msg.photo[msg.photo.length - 1]
+    const isDup = db0.records.some(r => r.photo_unique_id === photo.file_unique_id)
+    if (isDup) return ctx.reply('Этот скрин уже сохранён.')
+  } else if (limits.text) {
+    const norm = limits.text.trim().toLowerCase()
+    const isDup = db0.records.some(r => r.raw?.trim().toLowerCase() === norm)
+    if (isDup) return ctx.reply('Такая запись уже есть.')
+  }
+
   let structured
   if (limits.type === 'photo') {
     const photo = msg.photo[msg.photo.length - 1]
@@ -222,6 +234,7 @@ async function _handleMessage(ctx, bot) {
     if (limits.truncated) await ctx.reply('⚠️ Текст обрезан до 1000 символов')
   }
 
+  const photo0 = limits.type === 'photo' ? msg.photo[msg.photo.length - 1] : null
   const record = {
     id: uuidv4(),
     category: structured.category || 'другое',
@@ -229,6 +242,7 @@ async function _handleMessage(ctx, bot) {
     comment,
     raw: limits.text || comment,
     tags: structured.tags || [],
+    ...(photo0 ? { photo_unique_id: photo0.file_unique_id } : {}),
     data: {
       ...structured.data,
       ...(forwardMeta || {})

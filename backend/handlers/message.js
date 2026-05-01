@@ -408,7 +408,7 @@ async function doSave(ctx, user, structured, record) {
 const MENU = {
   reply_markup: {
     keyboard: [
-      ['📁 Записи', '⚙️ Настройки']
+      ['⚙️ Настройки', '💬 Фидбек']
     ],
     resize_keyboard: true
   }

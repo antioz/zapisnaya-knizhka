@@ -26,7 +26,7 @@ app.use(express.json())
 export const MENU = {
   reply_markup: {
     keyboard: [
-      ['📁 Записи', '⚙️ Настройки']
+      ['⚙️ Настройки', '💬 Фидбек']
     ],
     resize_keyboard: true
   }
@@ -76,30 +76,13 @@ bot.start(async (ctx) => {
 })
 
 // menu buttons
-bot.hears('📁 Записи', async (ctx) => {
-  await ctx.reply('Твоя записная книжка:', {
-    reply_markup: {
-      inline_keyboard: [[
-        { text: '📁 Открыть записи', web_app: { url: 'https://zapisnaya-knizhka.onrender.com/app' } }
-      ]]
-    }
-  })
-})
-
 bot.hears('⚙️ Настройки', async (ctx) => {
-  const user = await getUser(ctx.from.id)
-  const driveUrl = user?.drive_file_id
-    ? (user.drive_provider === 'yandex' ? getYandexFileUrl() : getGoogleFileUrl(user.drive_file_id))
-    : null
   await ctx.reply(
-    'Настройки и команды:\n\n' +
+    'Команды:\n\n' +
     '• *удали все* — удалить все записи\n' +
     '• *удали 3* — удалить запись из последнего списка\n' +
     '• *найди похожее* — найти дубликаты\n\n' +
-    'Можно сменить хранилище, но базы тоже будут разные.\n\n' +
-    'Скажи спасибо звонкой монетой — [тык](https://tbank.ru/cf/5FJG7hrT28)\n' +
-    'Подписывайся на канал — [\\@webthreesome](https://t.me/webthreesome)' +
-    (driveUrl ? `\n\n[Открыть файл в Drive](${driveUrl})` : ''),
+    'В приложении можно редактировать имена и контакты, удалять лишние и просто проверять, что все на месте. Файл с контактами хранится у вас на диске — когда корпорации сделают более удобный сервис, можно будет просто скормить его нейронке.',
     {
       parse_mode: 'Markdown',
       reply_markup: {
@@ -108,6 +91,15 @@ bot.hears('⚙️ Настройки', async (ctx) => {
         ]]
       }
     }
+  )
+})
+
+bot.hears('💬 Фидбек', async (ctx) => {
+  await ctx.reply(
+    'Ваши мысли, если таковые есть, пишите сюда: [@antiosov](https://t.me/antiosov)\n\n' +
+    'Ваши подписки совершайте здесь: [@webthreesome](https://t.me/webthreesome)\n\n' +
+    'Ваши благодарности звонкой монетой отправляйте сюда: [тык](https://tbank.ru/cf/5FJG7hrT28)',
+    { parse_mode: 'Markdown' }
   )
 })
 

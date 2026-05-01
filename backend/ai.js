@@ -113,7 +113,8 @@ export async function structure(text, comment, imageBase64 = null) {
     for (const model of visionModels) {
       try {
         const res = await visionClient.chat.completions.create({ model, messages, max_tokens: 500, temperature: 0.2 })
-        return JSON.parse(res.choices[0].message.content.trim())
+        const raw = res.choices[0].message.content.trim().replace(/^```(?:json)?\n?/i, '').replace(/```$/, '')
+        return JSON.parse(raw)
       } catch (e) {
         console.error(`Vision model ${model} failed:`, e.message)
       }
@@ -133,7 +134,8 @@ export async function structure(text, comment, imageBase64 = null) {
     temperature: 0.2
   })
 
-  return JSON.parse(res.choices[0].message.content.trim())
+  const raw = res.choices[0].message.content.trim().replace(/^```(?:json)?\n?/i, '').replace(/```$/,'')
+  return JSON.parse(raw)
 }
 
 export async function search(query, records) {

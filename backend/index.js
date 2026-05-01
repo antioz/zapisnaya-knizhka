@@ -77,15 +77,7 @@ bot.start(async (ctx) => {
 
 // menu buttons
 bot.hears('📁 Записи', async (ctx) => {
-  const APP_URL = 'https://zapisnaya-knizhka.onrender.com/app'
-  await ctx.reply('Твоя записная книжка:', {
-    reply_markup: {
-      inline_keyboard: [[
-        { text: '📁 Открыть записи', web_app: { url: APP_URL } },
-        { text: '🔗 Ссылка', url: APP_URL }
-      ]]
-    }
-  })
+  await ctx.reply('Твоя записная книжка:\nhttps://zapisnaya-knizhka.onrender.com/app')
 })
 
 bot.hears('⚙️ Настройки', async (ctx) => {

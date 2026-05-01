@@ -141,13 +141,20 @@ async function _handleMessage(ctx, bot) {
   const comment = msg.caption || ''
   const forwardMeta = extractForwardMeta(msg)
 
-  // pending confirmation: if user types text instead of pressing button — treat as comment and save
+  // pending confirmation: text while awaiting button press
   if (limits.type === 'text') {
     const pendingItem = pendingCache.get(String(telegramId))
     if (pendingItem) {
       pendingCache.delete(String(telegramId))
-      pendingItem.record.comment = limits.text.trim()
-      await doSave(ctx, user, pendingItem.structured, pendingItem.record)
+      const txt = limits.text.trim()
+      const isEditCommand = /^(замени|измени|исправь|удали|добавь|поменяй|убери|сделай)\b/i.test(txt)
+      if (isEditCommand) {
+        const updated = await editRecord(txt, pendingItem.record)
+        await doSave(ctx, user, pendingItem.structured, updated)
+      } else {
+        pendingItem.record.comment = txt
+        await doSave(ctx, user, pendingItem.structured, pendingItem.record)
+      }
       return
     }
   }

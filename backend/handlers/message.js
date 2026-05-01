@@ -386,9 +386,10 @@ async function doSave(ctx, user, structured, record) {
 
 const MENU = {
   reply_markup: {
-    keyboard: [
-      ['📁 Записи', '⚙️ Настройки']
-    ],
+    keyboard: [[
+      { text: '📁 Записи', web_app: { url: 'https://zapisnaya-knizhka.onrender.com/app' } },
+      { text: '⚙️ Настройки' }
+    ]],
     resize_keyboard: true
   }
 }

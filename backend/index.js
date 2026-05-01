@@ -25,9 +25,10 @@ app.use(express.json())
 
 export const MENU = {
   reply_markup: {
-    keyboard: [
-      ['📁 Записи', '⚙️ Настройки']
-    ],
+    keyboard: [[
+      { text: '📁 Записи', web_app: { url: 'https://zapisnaya-knizhka.onrender.com/app' } },
+      { text: '⚙️ Настройки' }
+    ]],
     resize_keyboard: true
   }
 }
@@ -76,16 +77,11 @@ bot.start(async (ctx) => {
 })
 
 // menu buttons
-bot.hears('📁 Записи', async (ctx) => {
-  const user = await getUser(ctx.from.id)
-  if (!user?.drive_file_id) return ctx.reply('Сначала подключи хранилище')
-  const url = user.drive_provider === 'yandex'
-    ? getYandexFileUrl()
-    : getGoogleFileUrl(user.drive_file_id)
-  await ctx.reply(`Твоя записная книжка:\n${url}`)
-})
-
 bot.hears('⚙️ Настройки', async (ctx) => {
+  const user = await getUser(ctx.from.id)
+  const driveUrl = user?.drive_file_id
+    ? (user.drive_provider === 'yandex' ? getYandexFileUrl() : getGoogleFileUrl(user.drive_file_id))
+    : null
   await ctx.reply(
     'Настройки и команды:\n\n' +
     '• *удали все* — удалить все записи\n' +
@@ -93,7 +89,8 @@ bot.hears('⚙️ Настройки', async (ctx) => {
     '• *найди похожее* — найти дубликаты\n\n' +
     'Можно сменить хранилище, но базы тоже будут разные.\n\n' +
     'Скажи спасибо звонкой монетой — [тык](https://tbank.ru/cf/5FJG7hrT28)\n' +
-    'Подписывайся на канал — [\\@webthreesome](https://t.me/webthreesome)',
+    'Подписывайся на канал — [\\@webthreesome](https://t.me/webthreesome)' +
+    (driveUrl ? `\n\n[Открыть файл в Drive](${driveUrl})` : ''),
     {
       parse_mode: 'Markdown',
       reply_markup: {

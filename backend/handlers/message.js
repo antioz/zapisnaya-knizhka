@@ -386,10 +386,9 @@ async function doSave(ctx, user, structured, record) {
 
 const MENU = {
   reply_markup: {
-    keyboard: [[
-      { text: '📁 Записи', web_app: { url: 'https://zapisnaya-knizhka.onrender.com/app' } },
-      { text: '⚙️ Настройки' }
-    ]],
+    keyboard: [
+      ['📁 Записи', '⚙️ Настройки']
+    ],
     resize_keyboard: true
   }
 }
@@ -405,10 +404,7 @@ async function sendCard(ctx, rec, saved = false) {
   }
   if (rec.comment) lines.push(`💬 "${rec.comment}"`)
   if (rec.tags?.length) lines.push(`Теги: ${rec.tags.join(', ')}`)
-  const sent = await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown', ...MENU })
-  setTimeout(() => {
-    ctx.telegram.deleteMessage(sent.chat.id, sent.message_id).catch(e => console.error('delete failed:', e.message))
-  }, 60_000)
+  await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown', ...MENU })
 }
 
 function formatListItem(rec) {

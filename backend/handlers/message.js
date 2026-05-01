@@ -278,7 +278,7 @@ async function _handleMessage(ctx, bot) {
     const contextText = limits.text.trim()
     pendingContextCache.set(telegramId, contextText)
     setTimeout(async () => {
-      if (pendingContextCache.get(telegramId) !== contextText) return  // forward already picked it up
+      if (pendingContextCache.get(telegramId) !== contextText) return
       pendingContextCache.delete(telegramId)
       const s = await structure(contextText, '').catch(() => null)
       if (!s) return
@@ -288,11 +288,11 @@ async function _handleMessage(ctx, bot) {
       await writeUserJson(user, db)
       searchCache.set(`last_saved_${telegramId}`, rec)
       const lines = [`✅ Сохранено`, `📋 ${capitalize(rec.category).toUpperCase()}`]
-      Object.entries(rec.data).forEach(([k, v]) => { const s = String(v).trim(); if (s && !EMPTY_VALUES.has(s.toLowerCase())) lines.push(`${k}: ${s}`) })
+      Object.entries(rec.data).forEach(([k, v]) => { const sv = String(v).trim(); if (sv && !EMPTY_VALUES.has(sv.toLowerCase())) lines.push(`${k}: ${sv}`) })
       if (rec.comment) lines.push(`💬 "${rec.comment}"`)
       await bot.telegram.sendMessage(telegramId, lines.join('\n'))
-    }, 10_000)
-    return  // silent — forward arrives immediately, otherwise saved after 10s
+    }, 1_000)
+    return
   }
 
   const mode = limits.type === 'photo' ? 'SAVE' : (zapisshiMatch ? 'SAVE' : najdiMatch ? 'SEARCH' : await classify(textForClassify))

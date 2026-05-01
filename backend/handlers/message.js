@@ -67,32 +67,28 @@ function hasValuableInfo(text) {
 
 export function setupSaveCallbacks(bot) {
 
-  bot.action(/^confirm_save:(\d+)$/, async (ctx) => {
-    const telegramId = String(ctx.match[1])
+  async function doSaveAction(ctx, telegramId) {
     const pending = pendingCache.get(telegramId)
     if (!pending) return ctx.answerCbQuery('Время вышло')
     pendingCache.delete(telegramId)
     await ctx.answerCbQuery()
     await ctx.editMessageText('Сохраняю...')
-    const user = await getUser(telegramId)
-    await doSave(ctx, user, pending.structured, pending.record)
-  })
+    try {
+      const user = await getUser(telegramId)
+      await doSave(ctx, user, pending.structured, pending.record)
+    } catch (e) {
+      console.error('save action error:', e)
+      await ctx.reply('Не удалось сохранить: ' + e.message)
+    }
+  }
+
+  bot.action(/^confirm_save:(\d+)$/, (ctx) => doSaveAction(ctx, String(ctx.match[1])))
+  bot.action(/^overwrite_save:(\d+)$/, (ctx) => doSaveAction(ctx, String(ctx.match[1])))
 
   bot.action(/^cancel_save:(\d+)$/, async (ctx) => {
     pendingCache.delete(String(ctx.match[1]))
     await ctx.answerCbQuery()
     await ctx.editMessageText('Не сохранил.')
-  })
-
-  bot.action(/^overwrite_save:(\d+)$/, async (ctx) => {
-    const telegramId = String(ctx.match[1])
-    const pending = pendingCache.get(telegramId)
-    if (!pending) return ctx.answerCbQuery('Время вышло')
-    pendingCache.delete(telegramId)
-    await ctx.answerCbQuery()
-    await ctx.editMessageText('Сохраняю заново...')
-    const user = await getUser(telegramId)
-    await doSave(ctx, user, pending.structured, pending.record)
   })
 }
 
@@ -411,8 +407,9 @@ async function _handleMessage(ctx, bot) {
   setTimeout(() => pendingCache.delete(String(telegramId)), 2 * 60_000)
   const previewLines = [`📇 ${capitalize(structured.category || 'другое').toUpperCase()}`]
   Object.entries(structured.data || {}).forEach(([k, v]) => {
+    if (v === null || v === undefined || typeof v === 'object') return
     const sv = String(v).trim()
-    if (sv && !EMPTY_VALUES.has(sv.toLowerCase())) previewLines.push(`${k}: ${sv}`)
+    if (sv && sv !== 'null' && !EMPTY_VALUES.has(sv.toLowerCase())) previewLines.push(`${k}: ${sv}`)
   })
   if (comment) previewLines.push(`💬 "${comment}"`)
   await ctx.reply(

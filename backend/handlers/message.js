@@ -413,10 +413,10 @@ async function sendCard(ctx, rec, saved = false) {
 function formatListItem(rec) {
   const d = rec.data || {}
   const name = d.имя || d.название || d.источник_имя || ''
-  const detail = d.описание || d.услуга || d.специализация || d.навыки || (rec.tags?.[0]) || ''
-  const location = d.город || d.адрес || ''
-  const parts = [name, detail, location].filter(Boolean)
-  if (parts.length) return parts.slice(0, 2).join(' | ')
+  const detail = d.описание || d.услуга || d.специализация || d.навыки || d.тема || (rec.tags?.[0]) || ''
+  const contact = d.телефон || d.telegram || d.username || d.сайт || d.ссылка || d.источник_tg || ''
+  const parts = [name, detail, contact].filter(Boolean)
+  if (parts.length) return parts.join(' | ')
   return rec.category
 }
 

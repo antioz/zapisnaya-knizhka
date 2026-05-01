@@ -8,6 +8,16 @@ import { getAuthUrl as getYandexAuthUrl, handleCallback as handleYandexCallback 
 import { initUserFile as initGoogleFile, getFileUrl as getGoogleFileUrl } from './drive/google.js'
 import { initUserFile as initYandexFile, getFileUrl as getYandexFileUrl } from './drive/yandex.js'
 import { getUser, upsertUser } from './db.js'
+import { webAppAuth } from './auth/telegram-webapp.js'
+import path from 'path'
+import { fileURLToPath } from 'url'
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+import * as googleDrive from './drive/google.js'
+import * as yandexDrive from './drive/yandex.js'
+
+function getDriveForUser(user) {
+  return user.drive_provider === 'yandex' ? yandexDrive : googleDrive
+}
 
 const bot = new Telegraf(process.env.BOT_TOKEN)
 const app = express()
@@ -141,6 +151,58 @@ app.get('/auth/yandex/callback', async (req, res) => {
   } catch (e) {
     console.error(e)
     res.status(500).send('Ошибка подключения. Попробуй ещё раз.')
+  }
+})
+
+// serve Mini App
+app.get('/app', (req, res) => {
+  res.sendFile(path.join(__dirname, 'webapp', 'index.html'))
+})
+
+// Mini App API
+app.get('/api/records', webAppAuth, async (req, res) => {
+  try {
+    const user = await getUser(String(req.telegramUser.id))
+    if (!user?.encrypted_token) return res.json({ records: [] })
+    const db = await getDriveForUser(user).readJson(user.encrypted_token, user.drive_file_id)
+    res.json({ records: db.records || [] })
+  } catch (e) {
+    console.error('GET /api/records', e)
+    res.status(500).json({ error: 'Failed to load' })
+  }
+})
+
+app.patch('/api/records/:id', webAppAuth, async (req, res) => {
+  try {
+    const user = await getUser(String(req.telegramUser.id))
+    if (!user?.encrypted_token) return res.status(404).json({ error: 'No storage' })
+    const db = await getDriveForUser(user).readJson(user.encrypted_token, user.drive_file_id)
+    const idx = db.records.findIndex(r => r.id === req.params.id)
+    if (idx === -1) return res.status(404).json({ error: 'Not found' })
+    const { data, comment } = req.body
+    if (data !== undefined) db.records[idx].data = data
+    if (comment !== undefined) db.records[idx].comment = comment
+    await getDriveForUser(user).writeJson(user.encrypted_token, user.drive_file_id, db)
+    res.json({ record: db.records[idx] })
+  } catch (e) {
+    console.error('PATCH /api/records', e)
+    res.status(500).json({ error: 'Failed to save' })
+  }
+})
+
+app.delete('/api/records/:id', webAppAuth, async (req, res) => {
+  try {
+    const user = await getUser(String(req.telegramUser.id))
+    if (!user?.encrypted_token) return res.status(404).json({ error: 'No storage' })
+    const db = await getDriveForUser(user).readJson(user.encrypted_token, user.drive_file_id)
+    const before = db.records.length
+    db.records = db.records.filter(r => r.id !== req.params.id)
+    if (db.records.length === before) return res.status(404).json({ error: 'Not found' })
+    await getDriveForUser(user).writeJson(user.encrypted_token, user.drive_file_id, db)
+    res.json({ ok: true })
+  } catch (e) {
+    console.error('DELETE /api/records', e)
+    res.status(500).json({ error: 'Failed to delete' })
   }
 })
 

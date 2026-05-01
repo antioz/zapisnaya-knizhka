@@ -66,14 +66,6 @@ function hasValuableInfo(text) {
 }
 
 export function setupSaveCallbacks(bot) {
-  bot.action(/^edit_last:(\d+)$/, async (ctx) => {
-    const telegramId = String(ctx.match[1])
-    const last = searchCache.get(`last_saved_${telegramId}`)
-    await ctx.answerCbQuery()
-    if (!last) return ctx.reply('Не помню последнюю запись.')
-    await ctx.reply('Напиши что исправить, например: «замени имя на Вася» или «добавь город Москва»')
-  })
-
 
   bot.action(/^confirm_save:(\d+)$/, async (ctx) => {
     const telegramId = String(ctx.match[1])
@@ -413,51 +405,31 @@ async function _handleMessage(ctx, bot) {
     )
   }
 
-  // photo: always confirm before saving so user can catch OCR errors
-  if (limits.type === 'photo') {
-    pendingCache.set(String(telegramId), { structured, record })
-    setTimeout(() => pendingCache.delete(String(telegramId)), 2 * 60_000)
-    const previewLines = [`📇 ${capitalize(structured.category || 'другое')}`]
-    Object.entries(structured.data || {}).forEach(([k, v]) => { if (v) previewLines.push(`${k}: ${v}`) })
-    if (comment) previewLines.push(`💬 "${comment}"`)
-    return ctx.reply(
-      `Вот что прочитал — всё верно?\n\n${previewLines.join('\n')}`,
-      {
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '✅ Сохранить', callback_data: `confirm_save:${telegramId}` },
-            { text: '❌ Не то', callback_data: `cancel_save:${telegramId}` }
-          ]]
-        }
+  // always preview before saving — user can confirm, cancel, or type a correction
+  pendingCache.set(String(telegramId), { structured, record })
+  setTimeout(() => pendingCache.delete(String(telegramId)), 2 * 60_000)
+  const previewLines = [`📇 ${capitalize(structured.category || 'другое').toUpperCase()}`]
+  Object.entries(structured.data || {}).forEach(([k, v]) => {
+    const sv = String(v).trim()
+    if (sv && !EMPTY_VALUES.has(sv.toLowerCase())) previewLines.push(`${k}: ${sv}`)
+  })
+  if (comment) previewLines.push(`💬 "${comment}"`)
+  await ctx.reply(
+    `Вот что понял — верно?\n\n${previewLines.join('\n')}\n\nИли напиши правку — «замени имя на Вася»`,
+    {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '✅ Сохранить', callback_data: `confirm_save:${telegramId}` },
+          { text: '❌ Не то', callback_data: `cancel_save:${telegramId}` }
+        ]]
       }
-    )
-  }
-
-  // low-value text: ask confirmation before saving
-  if (limits.type === 'text' && !hasValuableInfo(limits.text)) {
-    pendingCache.set(String(telegramId), { structured, record })
-    setTimeout(() => pendingCache.delete(String(telegramId)), 2 * 60_000)
-    return ctx.reply(
-      `Тут нет очевидной ценной инфы — точно сохранить?\n\n_${limits.text}_`,
-      {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '✅ Сохранить', callback_data: `confirm_save:${telegramId}` },
-            { text: '❌ Не надо', callback_data: `cancel_save:${telegramId}` }
-          ]]
-        }
-      }
-    )
-  }
-
-  await doSave(ctx, user, structured, record)
+    }
+  )
 
   // closed account forward: prompt for @username
   if (msg.forward_sender_name && !msg.forward_from && !msg.forward_from_chat) {
     pendingForwardCache.set(telegramId, { record })
     setTimeout(() => pendingForwardCache.delete(telegramId), 5 * 60_000)
-    await ctx.reply('Аккаунт закрыт, сохранил только имя. Если знаешь @username — кинь следующим сообщением.')
   }
 }
 
@@ -491,10 +463,7 @@ async function sendCard(ctx, rec, saved = false) {
     })
   }
   if (rec.comment) lines.push(`💬 "${rec.comment}"`)
-  const opts = saved
-    ? { ...MENU, reply_markup: { ...MENU.reply_markup, inline_keyboard: [[{ text: '✏️ Исправить', callback_data: `edit_last:${ctx.from?.id || ''}` }]] } }
-    : MENU
-  await ctx.reply(lines.join('\n'), opts)
+  await ctx.reply(lines.join('\n'), MENU)
 }
 
 function formatListItem(rec) {

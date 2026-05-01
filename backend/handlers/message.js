@@ -448,7 +448,7 @@ const MENU = {
   }
 }
 
-const EMPTY_VALUES = new Set(['не указано', 'не указана', 'не указан', 'нет', 'unknown', 'n/a', '-', '—'])
+const EMPTY_VALUES = new Set(['не указано', 'не указана', 'не указан', 'нет', 'unknown', 'n/a', '-', '—', '@username', 'username', 'нет данных', 'не известно', 'неизвестно'])
 
 async function sendCard(ctx, rec, saved = false) {
   const lines = []

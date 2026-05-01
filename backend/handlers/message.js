@@ -429,18 +429,21 @@ const MENU = {
   }
 }
 
+const EMPTY_VALUES = new Set(['не указано', 'не указана', 'не указан', 'нет', 'unknown', 'n/a', '-', '—'])
+
 async function sendCard(ctx, rec, saved = false) {
   const lines = []
   if (saved) lines.push(`✅ Сохранено`)
-  lines.push(`📇 *${capitalize(rec.category)}*`)
+  lines.push(`📇 ${capitalize(rec.category).toUpperCase()}`)
   if (rec.data) {
     Object.entries(rec.data).forEach(([k, v]) => {
-      if (v) lines.push(`${k}: ${v}`)
+      const s = String(v).trim()
+      if (s && !EMPTY_VALUES.has(s.toLowerCase())) lines.push(`${k}: ${s}`)
     })
   }
   if (rec.comment) lines.push(`💬 "${rec.comment}"`)
   if (rec.tags?.length) lines.push(`Теги: ${rec.tags.join(', ')}`)
-  await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown', ...MENU })
+  await ctx.reply(lines.join('\n'), MENU)
 }
 
 function formatListItem(rec) {

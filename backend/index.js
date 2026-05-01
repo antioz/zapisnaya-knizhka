@@ -77,7 +77,13 @@ bot.start(async (ctx) => {
 
 // menu buttons
 bot.hears('📁 Записи', async (ctx) => {
-  await ctx.reply('Твоя записная книжка:\nhttps://zapisnaya-knizhka.onrender.com/app')
+  await ctx.reply('Твоя записная книжка:', {
+    reply_markup: {
+      inline_keyboard: [[
+        { text: '📁 Открыть записи', web_app: { url: 'https://zapisnaya-knizhka.onrender.com/app' } }
+      ]]
+    }
+  })
 })
 
 bot.hears('⚙️ Настройки', async (ctx) => {

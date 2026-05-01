@@ -72,7 +72,7 @@ export async function editRecord(command, record) {
   return JSON.parse(res.choices[0].message.content.trim())
 }
 
-export async function structure(text, comment, imageBase64 = null) {
+export async function structure(text, comment, imageBase64 = null, forwardSender = null) {
   const messages = [
     {
       role: 'system',
@@ -127,9 +127,12 @@ export async function structure(text, comment, imageBase64 = null) {
     }
     throw new Error('vision_unavailable')
   } else {
+    const senderHint = forwardSender
+      ? `\nОТПРАВИТЕЛЬ ФОРВАРДА (это и есть контакт): имя="${forwardSender.name}"${forwardSender.username ? `, telegram="@${forwardSender.username}"` : ''} — используй как поля "имя" и "telegram", НЕ как "источник_имя"/"источник_tg"`
+      : ''
     messages.push({
       role: 'user',
-      content: `Структурируй эту запись:\n\nТекст: "${text}"\nКомментарий: "${comment || ''}"`
+      content: `Структурируй эту запись:\n\nТекст: "${text}"\nКомментарий: "${comment || ''}"${senderHint}`
     })
   }
 

@@ -1,3 +1,15 @@
+export function extractForwardSender(msg) {
+  if (!msg.forward_date) return null
+  if (msg.forward_from) {
+    const u = msg.forward_from
+    return {
+      name: `${u.first_name}${u.last_name ? ' ' + u.last_name : ''}`,
+      username: u.username || null
+    }
+  }
+  return null
+}
+
 export function extractForwardMeta(msg) {
   if (!msg.forward_date) return null
 

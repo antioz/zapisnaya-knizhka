@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
 import { classify, structure, search, editRecord } from '../ai.js'
 import { checkLimits } from './limits.js'
-import { extractForwardMeta } from './forward.js'
+import { extractForwardMeta, extractForwardSender } from './forward.js'
 import { checkRateLimit, handleViolation } from './moderation.js'
 import * as googleDrive from '../drive/google.js'
 import * as yandexDrive from '../drive/yandex.js'
@@ -141,6 +141,7 @@ async function _handleMessage(ctx, bot) {
   if (limits.blocked) return ctx.reply(limits.reply)
 
   const forwardMeta = extractForwardMeta(msg)
+  const forwardSender = extractForwardSender(msg)
 
   // pick up context note sent right before a forward
   const cachedContext = pendingContextCache.get(telegramId)
@@ -354,7 +355,7 @@ async function _handleMessage(ctx, bot) {
     const photo = msg.photo[msg.photo.length - 1]
     const base64 = await getPhotoBase64(ctx, photo)
     try {
-      structured = await structure('', comment, base64)
+      structured = await structure('', comment, base64, forwardSender)
     } catch (e) {
       if (e.message === 'vision_unavailable') {
         return ctx.reply('Не могу прочитать скрин — опиши текстом что там написано')
@@ -362,7 +363,7 @@ async function _handleMessage(ctx, bot) {
       throw e
     }
   } else {
-    structured = await structure(limits.text, comment)
+    structured = await structure(limits.text, comment, null, forwardSender)
     if (limits.truncated) await ctx.reply('⚠️ Текст обрезан до 1000 символов')
   }
 

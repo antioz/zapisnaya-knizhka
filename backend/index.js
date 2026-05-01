@@ -222,6 +222,7 @@ app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`)
   if (process.env.WEBHOOK_URL) {
     await bot.telegram.setWebhook(`${process.env.WEBHOOK_URL}/webhook`)
+    await bot.telegram.setChatMenuButton({ menuButton: { type: 'web_app', text: '📁 Записи', web_app: { url: 'https://zapisnaya-knizhka.onrender.com/app' } } }).catch(() => {})
     console.log('Webhook set')
   }
 })

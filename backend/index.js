@@ -162,7 +162,7 @@ app.get('/api/records', webAppAuth, async (req, res) => {
   try {
     const user = await getUser(String(req.telegramUser.id))
     if (!user?.encrypted_token) return res.json({ records: [] })
-    const db = await getDriveForUser(user).readJson(user.encrypted_token, user.drive_file_id)
+    const db = await getDriveForUser(user).readJson(user.encrypted_token, user.drive_file_id, req.telegramUser.id)
     res.json({ records: db.records || [] })
   } catch (e) {
     console.error('GET /api/records', e)
@@ -174,13 +174,13 @@ app.patch('/api/records/:id', webAppAuth, async (req, res) => {
   try {
     const user = await getUser(String(req.telegramUser.id))
     if (!user?.encrypted_token) return res.status(404).json({ error: 'No storage' })
-    const db = await getDriveForUser(user).readJson(user.encrypted_token, user.drive_file_id)
+    const db = await getDriveForUser(user).readJson(user.encrypted_token, user.drive_file_id, req.telegramUser.id)
     const idx = db.records.findIndex(r => r.id === req.params.id)
     if (idx === -1) return res.status(404).json({ error: 'Not found' })
     const { data, comment } = req.body
     if (data !== undefined) db.records[idx].data = data
     if (comment !== undefined) db.records[idx].comment = comment
-    await getDriveForUser(user).writeJson(user.encrypted_token, user.drive_file_id, db)
+    await getDriveForUser(user).writeJson(user.encrypted_token, user.drive_file_id, db, req.telegramUser.id)
     res.json({ record: db.records[idx] })
   } catch (e) {
     console.error('PATCH /api/records', e)
@@ -192,11 +192,11 @@ app.delete('/api/records/:id', webAppAuth, async (req, res) => {
   try {
     const user = await getUser(String(req.telegramUser.id))
     if (!user?.encrypted_token) return res.status(404).json({ error: 'No storage' })
-    const db = await getDriveForUser(user).readJson(user.encrypted_token, user.drive_file_id)
+    const db = await getDriveForUser(user).readJson(user.encrypted_token, user.drive_file_id, req.telegramUser.id)
     const before = db.records.length
     db.records = db.records.filter(r => r.id !== req.params.id)
     if (db.records.length === before) return res.status(404).json({ error: 'Not found' })
-    await getDriveForUser(user).writeJson(user.encrypted_token, user.drive_file_id, db)
+    await getDriveForUser(user).writeJson(user.encrypted_token, user.drive_file_id, db, req.telegramUser.id)
     res.json({ ok: true })
   } catch (e) {
     console.error('DELETE /api/records', e)

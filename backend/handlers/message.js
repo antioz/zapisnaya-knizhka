@@ -275,26 +275,9 @@ async function _handleMessage(ctx, bot) {
     /https?:\/\/|t\.me\/|@\w+/.test(limits.text || '') ||
     /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/.test(limits.text || '')
   if (limits.type === 'text' && !forwardMeta && !zapisshiMatch && !hasConcreteId && limits.text.length < 120) {
-    const contextText = limits.text.trim()
-    pendingContextCache.set(telegramId, contextText)
-    setTimeout(async () => {
-      if (pendingContextCache.get(telegramId) !== contextText) return
-      pendingContextCache.delete(telegramId)
-      // forward never came — save as regular record silently
-      const u = await getUser(String(telegramId)).catch(() => null)
-      if (!u?.encrypted_token) return
-      const s = await structure(contextText, '').catch(() => null)
-      if (!s) return
-      const rec = { id: uuidv4(), category: s.category || 'другое', created_at: new Date().toISOString(), comment: '', raw: contextText, tags: s.tags || [], data: s.data || {} }
-      const db = await readUserJson(u)
-      db.records.push(rec)
-      await writeUserJson(u, db)
-      searchCache.set(`last_saved_${telegramId}`, rec)
-      const lines = [`✅ Сохранено\n📋 ${capitalize(rec.category).toUpperCase()}`]
-      Object.entries(rec.data).forEach(([k, v]) => { if (v && !EMPTY_VALUES.has(String(v).toLowerCase())) lines.push(`${k}: ${v}`) })
-      await bot.telegram.sendMessage(telegramId, lines.join('\n'))
-    }, 30_000)
-    return  // silent — wait for forward
+    pendingContextCache.set(telegramId, limits.text.trim())
+    setTimeout(() => pendingContextCache.delete(telegramId), 10_000)
+    return  // silent — forward arrives immediately after
   }
 
   const mode = limits.type === 'photo' ? 'SAVE' : (zapisshiMatch ? 'SAVE' : najdiMatch ? 'SEARCH' : await classify(textForClassify))

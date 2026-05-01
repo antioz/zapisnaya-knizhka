@@ -66,6 +66,15 @@ function hasValuableInfo(text) {
 }
 
 export function setupSaveCallbacks(bot) {
+  bot.action(/^edit_last:(\d+)$/, async (ctx) => {
+    const telegramId = String(ctx.match[1])
+    const last = searchCache.get(`last_saved_${telegramId}`)
+    await ctx.answerCbQuery()
+    if (!last) return ctx.reply('Не помню последнюю запись.')
+    await ctx.reply('Напиши что исправить, например: «замени имя на Вася» или «добавь город Москва»')
+  })
+
+
   bot.action(/^confirm_save:(\d+)$/, async (ctx) => {
     const telegramId = String(ctx.match[1])
     const pending = pendingCache.get(telegramId)
@@ -482,7 +491,10 @@ async function sendCard(ctx, rec, saved = false) {
     })
   }
   if (rec.comment) lines.push(`💬 "${rec.comment}"`)
-  await ctx.reply(lines.join('\n'), MENU)
+  const opts = saved
+    ? { ...MENU, reply_markup: { ...MENU.reply_markup, inline_keyboard: [[{ text: '✏️ Исправить', callback_data: `edit_last:${ctx.from?.id || ''}` }]] } }
+    : MENU
+  await ctx.reply(lines.join('\n'), opts)
 }
 
 function formatListItem(rec) {

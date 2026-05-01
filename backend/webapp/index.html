@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Записи</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #fff; color: #111; }
+
+.header { padding: 14px 16px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; position: sticky; top: 0; background: #fff; z-index: 10; }
+.header-title { font-size: 17px; font-weight: 700; }
+.header-count { font-size: 13px; color: #aaa; }
+
+.filters { padding: 10px 16px; display: flex; gap: 8px; overflow-x: auto; border-bottom: 1px solid #f0f0f0; scrollbar-width: none; position: sticky; top: 49px; background: #fff; z-index: 9; }
+.filters::-webkit-scrollbar { display: none; }
+.chip { font-size: 12px; padding: 5px 14px; border-radius: 20px; border: 1px solid #ddd; color: #555; white-space: nowrap; cursor: pointer; flex-shrink: 0; user-select: none; }
+.chip.active { background: #111; color: #fff; border-color: #111; }
+
+.list { padding-bottom: 40px; }
+
+.row { padding: 12px 16px; border-bottom: 1px solid #f5f5f5; cursor: pointer; }
+.row-main { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.row-text { flex: 1; min-width: 0; }
+.row-name { font-size: 14px; font-weight: 600; color: #111; }
+.row-sub { font-size: 12px; color: #888; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-del { font-size: 20px; color: #ddd; flex-shrink: 0; padding: 4px 0 4px 12px; line-height: 1; }
+
+.edit-form { display: none; margin-top: 12px; background: #f2f2f2; border-radius: 10px; padding: 12px; }
+.row.open .edit-form { display: block; }
+
+.field { margin-bottom: 8px; }
+.field label { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 3px; }
+.field input, .field textarea { width: 100%; padding: 8px 10px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; background: #fff; color: #111; font-family: inherit; outline: none; }
+.field textarea { resize: none; height: 60px; }
+.field input:focus, .field textarea:focus { border-color: #111; }
+.field.comment textarea { font-style: italic; color: #888; }
+
+.btn-save { width: 100%; padding: 10px; background: #111; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 4px; }
+.btn-save:disabled { background: #999; }
+
+.state { display: flex; align-items: center; justify-content: center; min-height: 200px; color: #bbb; font-size: 14px; text-align: center; padding: 32px; }
+.spinner { width: 24px; height: 24px; border: 2px solid #eee; border-top-color: #111; border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">Записи</div>
+  <div class="header-count" id="count"></div>
+</div>
+<div class="filters" id="filters"></div>
+<div class="list" id="list">
+  <div class="state"><div><div class="spinner"></div>Загрузка...</div></div>
+</div>
+
+<script>
+const tg = window.Telegram.WebApp
+tg.ready()
+tg.expand()
+
+const BASE = ''
+let allRecords = []
+let activeFilter = 'все'
+let openRowId = null
+
+async function api(method, path, body) {
+  const res = await fetch(BASE + path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Telegram-Init-Data': tg.initData
+    },
+    body: body ? JSON.stringify(body) : undefined
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+async function load() {
+  try {
+    const { records } = await api('GET', '/api/records')
+    allRecords = records
+    renderFilters()
+    render()
+  } catch (e) {
+    document.getElementById('list').innerHTML = '<div class="state">Не удалось загрузить записи</div>'
+  }
+}
+
+function getCategories() {
+  const cats = [...new Set(allRecords.map(r => r.category).filter(Boolean))]
+  return cats
+}
+
+function renderFilters() {
+  const cats = getCategories()
+  const filtersEl = document.getElementById('filters')
+  filtersEl.innerHTML = ''
+  const all = chip('все', activeFilter === 'все')
+  filtersEl.appendChild(all)
+  cats.forEach(c => filtersEl.appendChild(chip(c, activeFilter === c)))
+}
+
+function chip(label, active) {
+  const el = document.createElement('div')
+  el.className = 'chip' + (active ? ' active' : '')
+  el.textContent = label
+  el.onclick = () => { activeFilter = label; renderFilters(); render() }
+  return el
+}
+
+function filtered() {
+  if (activeFilter === 'все') return allRecords
+  return allRecords.filter(r => r.category === activeFilter)
+}
+
+function render() {
+  const records = filtered()
+  const listEl = document.getElementById('list')
+  const countEl = document.getElementById('count')
+  countEl.textContent = allRecords.length + ' ' + plural(allRecords.length, 'запись', 'записи', 'записей')
+
+  if (!records.length) {
+    listEl.innerHTML = '<div class="state">Ещё ничего не сохранено</div>'
+    return
+  }
+
+  listEl.innerHTML = ''
+  records.forEach(rec => listEl.appendChild(makeRow(rec)))
+}
+
+function plural(n, one, few, many) {
+  const mod10 = n % 10, mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return one
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few
+  return many
+}
+
+function makeSub(rec) {
+  const d = rec.data || {}
+  const parts = [
+    d.описание || d.услуга || d.специализация || d.навыки || d.тема || (rec.tags?.[0]),
+    d.телефон || d.telegram || d.username || d.сайт || d.ссылка || d.источник_tg
+  ].filter(Boolean)
+  return parts.join(' · ')
+}
+
+function makeName(rec) {
+  const d = rec.data || {}
+  return d.имя || d.название || d.источник_имя || rec.category
+}
+
+function makeRow(rec) {
+  const row = document.createElement('div')
+  row.className = 'row' + (openRowId === rec.id ? ' open' : '')
+  row.dataset.id = rec.id
+
+  const name = makeName(rec)
+  const sub = makeSub(rec)
+
+  row.innerHTML = `
+    <div class="row-main">
+      <div class="row-text">
+        <div class="row-name">${esc(name)}</div>
+        ${sub ? `<div class="row-sub">${esc(sub)}</div>` : ''}
+      </div>
+      <div class="row-del">×</div>
+    </div>
+    <div class="edit-form">${makeForm(rec)}</div>
+  `
+
+  row.querySelector('.row-del').onclick = (e) => {
+    e.stopPropagation()
+    deleteRecord(rec.id, row)
+  }
+  row.querySelector('.row-main').onclick = () => toggleRow(rec.id)
+  row.querySelector('.btn-save')?.addEventListener('click', (e) => {
+    e.stopPropagation()
+    saveRecord(rec, row)
+  })
+
+  return row
+}
+
+function makeForm(rec) {
+  const d = rec.data || {}
+  const fields = Object.entries(d).map(([k, v]) =>
+    `<div class="field"><label>${esc(k)}</label><input data-key="${esc(k)}" value="${esc(String(v))}"></div>`
+  ).join('')
+  const commentField = `<div class="field comment"><label>комментарий</label><textarea data-comment>${esc(rec.comment || '')}</textarea></div>`
+  return fields + commentField + `<button class="btn-save">Сохранить</button>`
+}
+
+function toggleRow(id) {
+  openRowId = openRowId === id ? null : id
+  render()
+}
+
+async function deleteRecord(id, row) {
+  row.style.transition = 'opacity 0.25s'
+  row.style.opacity = '0.3'
+  try {
+    await api('DELETE', `/api/records/${id}`)
+    allRecords = allRecords.filter(r => r.id !== id)
+    if (openRowId === id) openRowId = null
+    renderFilters()
+    render()
+  } catch {
+    row.style.opacity = '1'
+  }
+}
+
+async function saveRecord(rec, row) {
+  const btn = row.querySelector('.btn-save')
+  btn.textContent = '...'
+  btn.disabled = true
+  const newData = {}
+  row.querySelectorAll('input[data-key]').forEach(inp => {
+    newData[inp.dataset.key] = inp.value
+  })
+  const comment = row.querySelector('textarea[data-comment]')?.value || ''
+  try {
+    const { record } = await api('PATCH', `/api/records/${rec.id}`, { data: newData, comment })
+    const idx = allRecords.findIndex(r => r.id === rec.id)
+    if (idx !== -1) allRecords[idx] = record
+    openRowId = null
+    renderFilters()
+    render()
+  } catch {
+    btn.textContent = 'Сохранить'
+    btn.disabled = false
+  }
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
+load()
+</script>
+</body>
+</html>

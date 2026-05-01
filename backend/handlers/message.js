@@ -449,7 +449,6 @@ async function sendCard(ctx, rec, saved = false) {
     })
   }
   if (rec.comment) lines.push(`💬 "${rec.comment}"`)
-  if (rec.tags?.length) lines.push(`Теги: ${rec.tags.join(', ')}`)
   await ctx.reply(lines.join('\n'), MENU)
 }
 

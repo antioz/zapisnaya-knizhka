@@ -249,7 +249,14 @@ async function _handleMessage(ctx, bot) {
     textForClassify = limits.text
   }
 
-  const mode = limits.type === 'photo' ? 'SAVE' : (zapisshiMatch ? 'SAVE' : await classify(textForClassify))
+  // "найди ..." — explicit search command, strip the trigger word
+  const najdiMatch = !zapisshiMatch && limits.text?.match(/^найди\s+(.+)/si)
+  if (najdiMatch) {
+    limits.text = najdiMatch[1].trim()
+    textForClassify = limits.text
+  }
+
+  const mode = limits.type === 'photo' ? 'SAVE' : (zapisshiMatch ? 'SAVE' : najdiMatch ? 'SEARCH' : await classify(textForClassify))
 
   if (mode === 'EDIT') {
     const lastSaved = searchCache.get(`last_saved_${telegramId}`)

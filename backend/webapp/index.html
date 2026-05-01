@@ -150,7 +150,7 @@ function makeSub(rec) {
 
 function makeName(rec) {
   const d = rec.data || {}
-  return d.имя || d.название || d.источник_имя || rec.category
+  return d.имя || d.название || d.источник_имя || Object.values(d).find(v => v && typeof v === 'string') || rec.category || '—'
 }
 
 function makeRow(rec) {

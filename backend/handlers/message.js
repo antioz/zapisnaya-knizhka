@@ -348,6 +348,27 @@ async function _handleMessage(ctx, bot) {
     )
   }
 
+  // photo: always confirm before saving so user can catch OCR errors
+  if (limits.type === 'photo') {
+    pendingCache.set(String(telegramId), { structured, record })
+    setTimeout(() => pendingCache.delete(String(telegramId)), 2 * 60_000)
+    const previewLines = [`📇 *${capitalize(structured.category || 'другое')}*`]
+    Object.entries(structured.data || {}).forEach(([k, v]) => { if (v) previewLines.push(`${k}: ${v}`) })
+    if (comment) previewLines.push(`💬 "${comment}"`)
+    return ctx.reply(
+      `Вот что прочитал — всё верно?\n\n${previewLines.join('\n')}`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '✅ Сохранить', callback_data: `confirm_save:${telegramId}` },
+            { text: '❌ Не то', callback_data: `cancel_save:${telegramId}` }
+          ]]
+        }
+      }
+    )
+  }
+
   // low-value text: ask confirmation before saving
   if (limits.type === 'text' && !hasValuableInfo(limits.text)) {
     pendingCache.set(String(telegramId), { structured, record })

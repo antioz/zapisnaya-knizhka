@@ -208,8 +208,10 @@ async function deleteRecord(id, row) {
     if (openRowId === id) openRowId = null
     renderFilters()
     render()
-  } catch {
+  } catch(e) {
     row.style.opacity = '1'
+    console.error('delete failed:', e.message)
+    tg.showAlert('Не удалось удалить: ' + e.message)
   }
 }
 

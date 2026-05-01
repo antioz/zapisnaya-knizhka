@@ -51,12 +51,18 @@ export async function writeJson(encryptedToken, data) {
     `${BASE}/upload?path=${encodeURIComponent(FILE_PATH)}&overwrite=true`,
     { headers: h }
   )
+  if (!uploadRes.ok) {
+    const text = await uploadRes.text()
+    throw new Error(`Yandex upload URL failed: ${uploadRes.status} ${text}`)
+  }
   const { href } = await uploadRes.json()
-  await fetch(href, {
+  if (!href) throw new Error('Yandex upload URL missing href')
+  const putRes = await fetch(href, {
     method: 'PUT',
     body: JSON.stringify(data, null, 2),
     headers: { 'Content-Type': 'application/json' }
   })
+  if (!putRes.ok) throw new Error(`Yandex PUT failed: ${putRes.status}`)
 }
 
 export function getFileUrl() {

@@ -30,9 +30,15 @@ export async function handleCallback(code, telegramId) {
   })
 }
 
-export function getAuthorizedClient(encryptedToken) {
+export function getAuthorizedClient(encryptedToken, telegramId = null) {
   const client = getClient()
   const tokens = JSON.parse(decrypt(encryptedToken))
   client.setCredentials(tokens)
+  if (telegramId) {
+    client.on('tokens', (newTokens) => {
+      const merged = { ...tokens, ...newTokens }
+      upsertUser(String(telegramId), { encrypted_token: encrypt(JSON.stringify(merged)) }).catch(console.error)
+    })
+  }
   return client
 }

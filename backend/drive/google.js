@@ -5,8 +5,8 @@ import { upsertUser } from '../db.js'
 const FOLDER_NAME = 'MyData'
 const FILE_NAME = 'записная_книжка.json'
 
-async function getDrive(encryptedToken) {
-  const auth = getAuthorizedClient(encryptedToken)
+async function getDrive(encryptedToken, telegramId = null) {
+  const auth = getAuthorizedClient(encryptedToken, telegramId)
   return google.drive({ version: 'v3', auth })
 }
 
@@ -59,14 +59,14 @@ export async function initUserFile(telegramId, encryptedToken) {
   return fileId
 }
 
-export async function readJson(encryptedToken, fileId) {
-  const drive = await getDrive(encryptedToken)
+export async function readJson(encryptedToken, fileId, telegramId = null) {
+  const drive = await getDrive(encryptedToken, telegramId)
   const res = await drive.files.get({ fileId, alt: 'media' })
   return res.data
 }
 
-export async function writeJson(encryptedToken, fileId, data) {
-  const drive = await getDrive(encryptedToken)
+export async function writeJson(encryptedToken, fileId, data, telegramId = null) {
+  const drive = await getDrive(encryptedToken, telegramId)
   await drive.files.update({
     fileId,
     media: { mimeType: 'application/json', body: JSON.stringify(data, null, 2) }

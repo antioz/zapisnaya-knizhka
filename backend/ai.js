@@ -128,7 +128,7 @@ export async function structure(text, comment, imageBase64 = null, forwardSender
     throw new Error('vision_unavailable')
   } else {
     const senderHint = forwardSender
-      ? `\nОТПРАВИТЕЛЬ ФОРВАРДА (это и есть контакт): имя="${forwardSender.name}"${forwardSender.username ? `, telegram="@${forwardSender.username}"` : ''} — используй как поля "имя" и "telegram", НЕ как "источник_имя"/"источник_tg"`
+      ? `\nОТПРАВИТЕЛЬ ФОРВАРДА: имя="${forwardSender.name}"${forwardSender.username ? `, telegram="@${forwardSender.username}"` : ''}.\nЛогика: если текст от первого лица ("я", "меня", "мои работы") — отправитель и есть контакт, используй его имя/telegram как поля "имя"/"telegram". Если текст о другом человеке ("вот Вася", "это мой коллега Петя") — контакт тот человек из текста, а отправитель — только источник ("источник_tg"/"источник_имя").`
       : ''
     messages.push({
       role: 'user',

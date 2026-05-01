@@ -163,6 +163,52 @@ async function _handleMessage(ctx, bot) {
     }
   }
 
+  // delete commands
+  if (limits.type === 'text') {
+    const txt = limits.text.trim().toLowerCase()
+
+    if (txt === 'удали все') {
+      const db = await readUserJson(user)
+      const count = db.records.length
+      db.records = []
+      await writeUserJson(user, db)
+      return ctx.reply(`Удалено ${count} записей.`)
+    }
+
+    const deleteMatch = txt.match(/^удали\s+(\d+)$/)
+    if (deleteMatch) {
+      const cached = searchCache.get(telegramId)
+      const idx = parseInt(deleteMatch[1]) - 1
+      if (!cached || !cached[idx]) return ctx.reply('Сначала найди записи через поиск, потом удаляй по номеру.')
+      const rec = cached[idx]
+      const db = await readUserJson(user)
+      const before = db.records.length
+      db.records = db.records.filter(r => r.id !== rec.id)
+      await writeUserJson(user, db)
+      if (db.records.length < before) {
+        searchCache.set(telegramId, cached.filter((_, i) => i !== idx))
+        return ctx.reply(`Запись удалена.`)
+      }
+      return ctx.reply('Не нашёл такую запись.')
+    }
+
+    if (txt === 'найди похожее') {
+      const db = await readUserJson(user)
+      const seen = new Map()
+      const dups = []
+      for (const rec of db.records) {
+        const ids = extractIdentifiers(rec.data)
+        for (const id of ids) {
+          if (seen.has(id)) dups.push({ id, recs: [seen.get(id), rec] })
+          else seen.set(id, rec)
+        }
+      }
+      if (!dups.length) return ctx.reply('Дубликатов не найдено.')
+      const lines = dups.map(d => `• совпадение по "${d.id}": ${formatListItem(d.recs[0])} / ${formatListItem(d.recs[1])}`).join('\n')
+      return ctx.reply(`Найдено совпадений: ${dups.length}\n\n${lines}`)
+    }
+  }
+
   // drill-down: user replies with number or name to previous search
   if (limits.type === 'text') {
     const cached = searchCache.get(telegramId)
@@ -341,8 +387,7 @@ async function doSave(ctx, user, structured, record) {
 const MENU = {
   reply_markup: {
     keyboard: [
-      ['📁 Записи', 'Спасибо'],
-      ['Канал', '⚙️ Настройки']
+      ['📁 Записи', '⚙️ Настройки']
     ],
     resize_keyboard: true
   }
@@ -366,12 +411,13 @@ async function sendCard(ctx, rec, saved = false) {
 }
 
 function formatListItem(rec) {
-  const parts = []
-  if (rec.data?.имя) parts.push(rec.data.имя)
-  if (rec.data?.название) parts.push(rec.data.название)
-  if (rec.data?.город) parts.push(rec.data.город)
-  if (rec.data?.источник_tg) parts.push(rec.data.источник_tg)
-  return parts.length ? parts.join(' · ') : rec.category
+  const d = rec.data || {}
+  const name = d.имя || d.название || d.источник_имя || ''
+  const detail = d.описание || d.услуга || d.специализация || d.навыки || (rec.tags?.[0]) || ''
+  const location = d.город || d.адрес || ''
+  const parts = [name, detail, location].filter(Boolean)
+  if (parts.length) return parts.slice(0, 2).join(' | ')
+  return rec.category
 }
 
 function capitalize(str) {

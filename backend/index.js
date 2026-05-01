@@ -13,11 +13,10 @@ const bot = new Telegraf(process.env.BOT_TOKEN)
 const app = express()
 app.use(express.json())
 
-const MENU = {
+export const MENU = {
   reply_markup: {
     keyboard: [
-      ['📁 Записи', 'Спасибо'],
-      ['Канал', '⚙️ Настройки']
+      ['📁 Записи', '⚙️ Настройки']
     ],
     resize_keyboard: true
   }
@@ -51,7 +50,7 @@ setupSaveCallbacks(bot)
 bot.start(async (ctx) => {
   const user = await getUser(ctx.from.id)
   if (user?.encrypted_token) {
-    return ctx.reply('Кидай что хочешь сохранить — или напиши что найти.')
+    return ctx.reply('Кидай что хочешь сохранить — или напиши что найти.', MENU)
   }
   return ctx.reply(
     'Привет. Я чуть умней записной книжки. Помогаю хранить записи и находить их по запросам. Например, сохраняй прилетающие контакты, а когда нужно будет найти что-то по теме, просто напиши мне: «трактор Клин» или «лучшая шаурма на Рязанском проспекте», чем ты там ещё увлекаешься. Ни к каким твоим данным доступа не имею. Но всё равно совет: не надо хранить чувствительную информацию в интернете.',
@@ -76,24 +75,24 @@ bot.hears('📁 Записи', async (ctx) => {
   await ctx.reply(`Твоя записная книжка:\n${url}`)
 })
 
-bot.hears('Спасибо', (ctx) => ctx.reply('Спасибо! ☕', {
-  reply_markup: {
-    inline_keyboard: [[{ text: 'Спасибо', url: 'https://tbank.ru/cf/5FJG7hrT28' }]]
-  }
-}))
-bot.hears('Канал', (ctx) => ctx.reply('Подписывайся 👇', {
-  reply_markup: {
-    inline_keyboard: [[{ text: '@webthreesome', url: 'https://t.me/webthreesome' }]]
-  }
-}))
 bot.hears('⚙️ Настройки', async (ctx) => {
-  await ctx.reply('Можно сменить хранилище, но базы тоже будут разные', {
-    reply_markup: {
-      inline_keyboard: [[
-        { text: '🔄 Сменить хранилище', callback_data: 'settings:reset' }
-      ]]
+  await ctx.reply(
+    'Настройки и команды:\n\n' +
+    '• *удали все* — удалить все записи\n' +
+    '• *удали 3* — удалить запись из последнего списка\n' +
+    '• *найди похожее* — найти дубликаты\n\n' +
+    'Можно сменить хранилище, но базы тоже будут разные.\n\n' +
+    'Скажи спасибо звонкой монетой — [тык](https://tbank.ru/cf/5FJG7hrT28)\n' +
+    'Подписывайся на канал — [\\@webthreesome](https://t.me/webthreesome)',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '🔄 Сменить хранилище', callback_data: 'settings:reset' }
+        ]]
+      }
     }
-  })
+  )
 })
 
 bot.action('settings:reset', async (ctx) => {

@@ -141,6 +141,17 @@ async function _handleMessage(ctx, bot) {
   const comment = msg.caption || ''
   const forwardMeta = extractForwardMeta(msg)
 
+  // pending confirmation: if user types text instead of pressing button — treat as comment and save
+  if (limits.type === 'text') {
+    const pendingItem = pendingCache.get(String(telegramId))
+    if (pendingItem) {
+      pendingCache.delete(String(telegramId))
+      pendingItem.record.comment = limits.text.trim()
+      await doSave(ctx, user, pendingItem.structured, pendingItem.record)
+      return
+    }
+  }
+
   // closed-account forward: waiting for @username clarification
   if (limits.type === 'text') {
     const pendingFwd = pendingForwardCache.get(telegramId)

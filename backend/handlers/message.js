@@ -13,8 +13,6 @@ const searchCache = new Map()
 const pendingCache = new Map()
 // pending closed-account forward (waiting for @username)
 const pendingForwardCache = new Map()
-// context note sent right before a forward (to attach as comment)
-const pendingContextCache = new Map()
 
 function getDrive(provider) {
   return provider === 'yandex' ? yandexDrive : googleDrive
@@ -140,11 +138,7 @@ async function _handleMessage(ctx, bot) {
   const forwardMeta = extractForwardMeta(msg)
   const forwardSender = extractForwardSender(msg)
 
-  // pick up context note sent right before a forward
-  const cachedContext = pendingContextCache.get(telegramId)
-  if (cachedContext && forwardMeta) pendingContextCache.delete(telegramId)
-  const captionParts = [cachedContext && forwardMeta ? cachedContext : null, msg.caption].filter(Boolean)
-  const comment = captionParts.join(' · ') || ''
+  const comment = msg.caption || ''
 
   // pending confirmation: text while awaiting button press
   if (limits.type === 'text') {
@@ -268,32 +262,7 @@ async function _handleMessage(ctx, bot) {
     textForClassify = limits.text
   }
 
-  // plain text with no concrete identifiers and no forward → may be a context note before an upcoming forward
-  const hasConcreteId = /\+?[\d\s\-()]{7,}/.test(limits.text || '') ||
-    /https?:\/\/|t\.me\/|@\w+/.test(limits.text || '') ||
-    /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/.test(limits.text || '')
-  if (limits.type === 'text' && !forwardMeta && !zapisshiMatch && !hasConcreteId && limits.text.length < 120) {
-    const contextText = limits.text.trim()
-    pendingContextCache.set(telegramId, contextText)
-    setTimeout(async () => {
-      if (pendingContextCache.get(telegramId) !== contextText) return
-      pendingContextCache.delete(telegramId)
-      const s = await structure(contextText, '').catch(() => null)
-      if (!s) return
-      const rec = { id: uuidv4(), category: s.category || 'другое', created_at: new Date().toISOString(), comment: '', raw: contextText, tags: s.tags || [], data: s.data || {} }
-      const db = await readUserJson(user)
-      db.records.push(rec)
-      await writeUserJson(user, db)
-      searchCache.set(`last_saved_${telegramId}`, rec)
-      const lines = [`✅ Сохранено`, `📋 ${capitalize(rec.category).toUpperCase()}`]
-      Object.entries(rec.data).forEach(([k, v]) => { const sv = String(v).trim(); if (sv && !EMPTY_VALUES.has(sv.toLowerCase())) lines.push(`${k}: ${sv}`) })
-      if (rec.comment) lines.push(`💬 "${rec.comment}"`)
-      await bot.telegram.sendMessage(telegramId, lines.join('\n'))
-    }, 1_000)
-    return
-  }
-
-  const mode = limits.type === 'photo' || forwardMeta ? 'SAVE' : (zapisshiMatch ? 'SAVE' : najdiMatch ? 'SEARCH' : await classify(textForClassify))
+const mode = limits.type === 'photo' || forwardMeta ? 'SAVE' : (zapisshiMatch ? 'SAVE' : najdiMatch ? 'SEARCH' : await classify(textForClassify))
 
   if (mode === 'EDIT') {
     const lastSaved = searchCache.get(`last_saved_${telegramId}`)

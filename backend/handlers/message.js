@@ -237,10 +237,17 @@ async function _handleMessage(ctx, bot) {
   }
 
   // classify: SAVE or SEARCH
-  const textForClassify = limits.text || comment
+  let textForClassify = limits.text || comment
   if (!textForClassify && limits.type !== 'photo') return
 
-  const mode = limits.type === 'photo' ? 'SAVE' : await classify(textForClassify)
+  // "запиши ..." — explicit save command, strip the trigger word
+  const zapisshiMatch = limits.text?.match(/^запиши\s+(.+)/si)
+  if (zapisshiMatch) {
+    limits.text = zapisshiMatch[1].trim()
+    textForClassify = limits.text
+  }
+
+  const mode = limits.type === 'photo' ? 'SAVE' : (zapisshiMatch ? 'SAVE' : await classify(textForClassify))
 
   if (mode === 'EDIT') {
     const lastSaved = searchCache.get(`last_saved_${telegramId}`)

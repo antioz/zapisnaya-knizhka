@@ -379,8 +379,8 @@ async function _handleMessage(ctx, bot) {
     ...(photo0 ? { photo_unique_id: photo0.file_unique_id } : {}),
     data: Object.fromEntries(
       Object.entries({ ...structured.data, ...(forwardMeta || {}) })
-        .filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object')
-        .map(([k, v]) => [k, String(v)])
+        .filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object' && v !== 'null' && v !== 'undefined' && String(v).trim() !== '')
+        .map(([k, v]) => [k, String(v).trim()])
     )
   }
 

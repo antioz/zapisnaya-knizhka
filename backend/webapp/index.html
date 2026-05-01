@@ -187,9 +187,11 @@ function makeRow(rec) {
 
 function makeForm(rec) {
   const d = rec.data || {}
-  const fields = Object.entries(d).map(([k, v]) =>
-    `<div class="field"><label>${esc(k)}</label><input data-key="${esc(k)}" value="${esc(String(v))}"></div>`
-  ).join('')
+  const fields = Object.entries(d)
+    .filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '' && String(v) !== 'null')
+    .map(([k, v]) =>
+      `<div class="field"><label>${esc(k)}</label><input data-key="${esc(k)}" value="${esc(String(v))}"></div>`
+    ).join('')
   const commentField = `<div class="field comment"><label>комментарий</label><textarea data-comment>${esc(rec.comment || '')}</textarea></div>`
   return fields + commentField + `<button class="btn-save">Сохранить</button>`
 }

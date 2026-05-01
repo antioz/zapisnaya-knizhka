@@ -10,6 +10,12 @@ const visionClient = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY
 })
 
+function parseJsonResponse(text) {
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) throw new SyntaxError('No JSON object found in response')
+  return JSON.parse(match[0])
+}
+
 const CATEGORIES = 'контакт, место, цена/услуга, идея, ссылка, другое'
 
 export async function classify(text) {
@@ -113,8 +119,7 @@ export async function structure(text, comment, imageBase64 = null) {
     for (const model of visionModels) {
       try {
         const res = await visionClient.chat.completions.create({ model, messages, max_tokens: 500, temperature: 0.2 })
-        const raw = res.choices[0].message.content.trim().replace(/^```(?:json)?\n?/i, '').replace(/```$/, '')
-        return JSON.parse(raw)
+        return parseJsonResponse(res.choices[0].message.content)
       } catch (e) {
         console.error(`Vision model ${model} failed:`, e.message)
       }
@@ -134,8 +139,7 @@ export async function structure(text, comment, imageBase64 = null) {
     temperature: 0.2
   })
 
-  const raw = res.choices[0].message.content.trim().replace(/^```(?:json)?\n?/i, '').replace(/```$/,'')
-  return JSON.parse(raw)
+  return parseJsonResponse(res.choices[0].message.content)
 }
 
 export async function search(query, records) {

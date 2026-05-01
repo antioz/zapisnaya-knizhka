@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid'
-import { classify, structure, search, editRecord, checkContentSafety } from '../ai.js'
+import { classify, structure, search, editRecord } from '../ai.js'
 import { checkLimits } from './limits.js'
 import { extractForwardMeta } from './forward.js'
 import { checkRateLimit, handleViolation } from './moderation.js'
@@ -226,15 +226,6 @@ async function _handleMessage(ctx, bot) {
     }
   }
 
-  // content safety
-  const rawText = limits.text || comment || ''
-  if (rawText) {
-    const safety = await checkContentSafety(rawText)
-    if (safety === 'UNSAFE') {
-      await handleViolation(bot, telegramId, username, 'подозрительный контент')
-      return ctx.reply('Бот временно недоступен для тебя. Если это ошибка — напиши @antiosina')
-    }
-  }
 
   // classify: SAVE or SEARCH
   let textForClassify = limits.text || comment

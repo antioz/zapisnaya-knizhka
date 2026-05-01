@@ -297,7 +297,7 @@ async function _handleMessage(ctx, bot) {
     return
   }
 
-  const mode = limits.type === 'photo' ? 'SAVE' : (zapisshiMatch ? 'SAVE' : najdiMatch ? 'SEARCH' : await classify(textForClassify))
+  const mode = limits.type === 'photo' || forwardMeta ? 'SAVE' : (zapisshiMatch ? 'SAVE' : najdiMatch ? 'SEARCH' : await classify(textForClassify))
 
   if (mode === 'EDIT') {
     const lastSaved = searchCache.get(`last_saved_${telegramId}`)
@@ -377,10 +377,11 @@ async function _handleMessage(ctx, bot) {
     raw: limits.text || comment,
     tags: structured.tags || [],
     ...(photo0 ? { photo_unique_id: photo0.file_unique_id } : {}),
-    data: {
-      ...structured.data,
-      ...(forwardMeta || {})
-    }
+    data: Object.fromEntries(
+      Object.entries({ ...structured.data, ...(forwardMeta || {}) })
+        .filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object')
+        .map(([k, v]) => [k, String(v)])
+    )
   }
 
   // duplicate check by phone/nick/email

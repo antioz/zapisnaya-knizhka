@@ -11,9 +11,19 @@ const visionClient = new OpenAI({
 })
 
 function parseJsonResponse(text) {
-  const match = text.match(/\{[\s\S]*\}/)
-  if (!match) throw new SyntaxError('No JSON object found in response')
-  return JSON.parse(match[0])
+  const start = text.indexOf('{')
+  if (start === -1) throw new SyntaxError('No JSON object found in response')
+  let depth = 0
+  let end = -1
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === '{') depth++
+    else if (text[i] === '}') {
+      depth--
+      if (depth === 0) { end = i; break }
+    }
+  }
+  if (end === -1) throw new SyntaxError('Unclosed JSON in response')
+  return JSON.parse(text.slice(start, end + 1))
 }
 
 const CATEGORIES = 'контакт, место, цена/услуга, идея, ссылка, другое'

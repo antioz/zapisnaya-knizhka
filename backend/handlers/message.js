@@ -147,8 +147,8 @@ async function _handleMessage(ctx, bot) {
     if (pendingItem) {
       pendingCache.delete(String(telegramId))
       const txt = limits.text.trim()
-      const isEditCommand = /^(замени|измени|исправь|удали|добавь|поменяй|убери|сделай)\b/.test(txt.toLowerCase())
-      if (isEditCommand) {
+      const intent = await classify(txt)
+      if (intent === 'EDIT') {
         const updated = await editRecord(txt, pendingItem.record)
         await doSave(ctx, user, pendingItem.structured, updated)
       } else {
@@ -303,7 +303,7 @@ async function _handleMessage(ctx, bot) {
   // If it's a plain short text without valuable info and no forward — hold briefly to wait for a possible forward
   if (mode === 'SAVE' && limits.type === 'text' && !forwardMeta) {
     const textTrimmed = limits.text.trim()
-    if (!hasValuableInfo(textTrimmed) && textTrimmed.length < 120) {
+    if (textTrimmed.length < 120) {
       // Don't hold if there's already a pending confirmation or pending forward awaiting response
       const hasPending = pendingCache.has(String(telegramId)) || pendingForwardCache.has(telegramId)
       if (!hasPending) {
@@ -316,9 +316,9 @@ async function _handleMessage(ctx, bot) {
             const pendingItem = pendingCache.get(String(telegramId))
             if (pendingItem) {
               pendingCache.delete(String(telegramId))
-              const isEdit = /^(замени|измени|исправь|удали|добавь|поменяй|убери|сделай)\b/.test(held.text.toLowerCase())
               try {
-                if (isEdit) {
+                const intent = await classify(held.text)
+                if (intent === 'EDIT') {
                   const updated = await editRecord(held.text, pendingItem.record)
                   await doSave(held.ctx, held.user, pendingItem.structured, updated)
                 } else {

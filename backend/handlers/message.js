@@ -38,9 +38,12 @@ async function getPhotoBase64(ctx, photo) {
   return Buffer.from(buf).toString('base64')
 }
 
+const SOURCE_FIELDS = new Set(['источник_tg', 'источник_имя', 'от_кого'])
+
 function extractIdentifiers(data) {
   const ids = []
-  for (const v of Object.values(data || {})) {
+  for (const [k, v] of Object.entries(data || {})) {
+    if (SOURCE_FIELDS.has(k)) continue
     const s = String(v).toLowerCase()
     if (/\+?[\d\s\-()]{7,}/.test(s)) ids.push(s.replace(/[\s\-()]/g, ''))
     if (/@\w+/.test(s)) ids.push(s.match(/@\w+/)[0])

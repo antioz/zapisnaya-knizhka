@@ -122,9 +122,11 @@ export async function structure(text, comment, imageBase64 = null, forwardSender
 
   if (imageBase64) {
     const visionModels = [
+      'meta-llama/llama-3.2-11b-vision-instruct:free',
       'google/gemini-flash-1.5-8b:free',
-      'baidu/qianfan-ocr-fast:free',
-      'google/gemma-3-27b-it:free'
+      'qwen/qwen2-vl-7b-instruct:free',
+      'google/gemma-3-27b-it:free',
+      'baidu/qianfan-ocr-fast:free'
     ]
     messages.push({
       role: 'user',

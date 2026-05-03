@@ -64,8 +64,7 @@ function findDuplicateByIdentifier(records, newData) {
 function hasValuableInfo(text) {
   return /\+?[\d\s\-()]{7,}/.test(text) ||
     /https?:\/\/|t\.me\/|@\w+/.test(text) ||
-    /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/.test(text) ||
-    text.length > 40
+    /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/.test(text)
 }
 
 export function setupSaveCallbacks(bot) {

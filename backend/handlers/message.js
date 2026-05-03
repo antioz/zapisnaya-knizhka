@@ -313,6 +313,24 @@ async function _handleMessage(ctx, bot) {
           const held = textHoldCache.get(telegramId)
           if (held && held.ts === ts) {
             textHoldCache.delete(telegramId)
+            const pendingItem = pendingCache.get(String(telegramId))
+            if (pendingItem) {
+              pendingCache.delete(String(telegramId))
+              const isEdit = /^(замени|измени|исправь|удали|добавь|поменяй|убери|сделай)\b/i.test(held.text)
+              try {
+                if (isEdit) {
+                  const updated = await editRecord(held.text, pendingItem.record)
+                  await doSave(held.ctx, held.user, pendingItem.structured, updated)
+                } else {
+                  pendingItem.record.comment = held.text
+                  await doSave(held.ctx, held.user, pendingItem.structured, pendingItem.record)
+                }
+              } catch (e) {
+                console.error('textHoldCache pending route error:', e)
+                await held.ctx.reply('Не удалось применить правку: ' + e.message)
+              }
+              return
+            }
             try {
               await processSaveFlow(held.ctx, held.user, { ...held.limitsSnapshot }, '', null, null)
             } catch (e) {

@@ -13,6 +13,8 @@ const searchCache = new Map()
 const pendingCache = new Map()
 // pending closed-account forward (waiting for @username)
 const pendingForwardCache = new Map()
+// short text held briefly to check if a forward follows it
+const textHoldCache = new Map()
 
 function getDrive(provider) {
   return provider === 'yandex' ? yandexDrive : googleDrive
@@ -40,9 +42,9 @@ function extractIdentifiers(data) {
   const ids = []
   for (const v of Object.values(data || {})) {
     const s = String(v).toLowerCase()
-    if (/\+?[\d\s\-()]{7,}/.test(s)) ids.push(s.replace(/[\s\-()]/g, ''))  // phone
-    if (/@\w+/.test(s)) ids.push(s.match(/@\w+/)[0])  // @nick
-    if (/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/.test(s)) ids.push(s.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/)[0])  // email
+    if (/\+?[\d\s\-()]{7,}/.test(s)) ids.push(s.replace(/[\s\-()]/g, ''))
+    if (/@\w+/.test(s)) ids.push(s.match(/@\w+/)[0])
+    if (/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/.test(s)) ids.push(s.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/)[0])
   }
   return ids
 }
@@ -57,14 +59,13 @@ function findDuplicateByIdentifier(records, newData) {
 }
 
 function hasValuableInfo(text) {
-  return /\+?[\d\s\-()]{7,}/.test(text) ||  // phone
-    /https?:\/\/|t\.me\/|@\w+/.test(text) ||  // url or @
-    /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/.test(text) ||  // email
-    text.length > 40  // long enough to likely have substance
+  return /\+?[\d\s\-()]{7,}/.test(text) ||
+    /https?:\/\/|t\.me\/|@\w+/.test(text) ||
+    /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/.test(text) ||
+    text.length > 40
 }
 
 export function setupSaveCallbacks(bot) {
-
   async function doSaveAction(ctx, telegramId) {
     const pending = pendingCache.get(telegramId)
     if (!pending) return ctx.answerCbQuery('Время вышло')
@@ -103,7 +104,6 @@ async function _handleMessage(ctx, bot) {
   const telegramId = ctx.from.id
   const username = ctx.from.username
 
-  // rate limit check
   const rate = checkRateLimit(telegramId)
   if (rate.blocked) {
     await handleViolation(bot, telegramId, username, rate.reason)
@@ -112,10 +112,9 @@ async function _handleMessage(ctx, bot) {
 
   const user = await getUser(telegramId)
 
-  // not connected yet — onboarding
   if (!user || !user.encrypted_token) {
     return ctx.reply(
-      'Привет. Я чуть умней записной книжки. Помогаю хранить записи и находить их по запросам. Например, сохраняй прилетающие контакты, а когда нужно будет найти что-то по теме, просто напиши мне: «трактор Клин» или «лучшая шаурма на Рязанском проспекте», чем ты там ещё увлекаешься. Ни к каким твоим данным доступа не имею. Но всё равно совет: не надо хранить чувствительную информацию в интернете.',
+      'Привет. Я чуть умней записной книжки...',
       {
         reply_markup: {
           inline_keyboard: [[
@@ -163,7 +162,6 @@ async function _handleMessage(ctx, bot) {
     const pendingFwd = pendingForwardCache.get(telegramId)
     if (pendingFwd) {
       const text = limits.text.trim()
-      // accept @username or a link
       if (/^@\w+$/.test(text) || /https?:\/\/|t\.me\//.test(text)) {
         pendingForwardCache.delete(telegramId)
         pendingFwd.record.data.источник_tg = text
@@ -243,26 +241,22 @@ async function _handleMessage(ctx, bot) {
     }
   }
 
-
-  // classify: SAVE or SEARCH
   let textForClassify = limits.text || comment
   if (!textForClassify && limits.type !== 'photo') return
 
-  // "запиши ..." — explicit save command, strip the trigger word
   const zapisshiMatch = limits.text?.match(/^запиши\s+(.+)/si)
   if (zapisshiMatch) {
     limits.text = zapisshiMatch[1].trim()
     textForClassify = limits.text
   }
 
-  // "найди ..." — explicit search command, strip the trigger word
   const najdiMatch = !zapisshiMatch && limits.text?.match(/^найди\s+(.+)/si)
   if (najdiMatch) {
     limits.text = najdiMatch[1].trim()
     textForClassify = limits.text
   }
 
-const mode = limits.type === 'photo' || forwardMeta ? 'SAVE' : (zapisshiMatch ? 'SAVE' : najdiMatch ? 'SEARCH' : await classify(textForClassify))
+  const mode = limits.type === 'photo' || forwardMeta ? 'SAVE' : (zapisshiMatch ? 'SAVE' : najdiMatch ? 'SEARCH' : await classify(textForClassify))
 
   if (mode === 'EDIT') {
     const lastSaved = searchCache.get(`last_saved_${telegramId}`)
@@ -304,6 +298,50 @@ const mode = limits.type === 'photo' || forwardMeta ? 'SAVE' : (zapisshiMatch ? 
   }
 
   // SAVE
+  // If it's a plain short text without valuable info and no forward — hold briefly to wait for a possible forward
+  if (mode === 'SAVE' && limits.type === 'text' && !forwardMeta) {
+    const textTrimmed = limits.text.trim()
+    if (!hasValuableInfo(textTrimmed) && textTrimmed.length < 120) {
+      // Don't hold if there's already a pending confirmation or pending forward awaiting response
+      const hasPending = pendingCache.has(String(telegramId)) || pendingForwardCache.has(telegramId)
+      if (!hasPending) {
+        const ts = Date.now()
+        textHoldCache.set(telegramId, { ctx, user, text: textTrimmed, limitsSnapshot: { ...limits }, ts })
+        setTimeout(async () => {
+          const held = textHoldCache.get(telegramId)
+          if (held && held.ts === ts) {
+            textHoldCache.delete(telegramId)
+            try {
+              await processSaveFlow(held.ctx, held.user, { ...held.limitsSnapshot }, '', null, null)
+            } catch (e) {
+              console.error('textHoldCache timeout processSaveFlow error:', e)
+            }
+          }
+        }, 1500)
+        return
+      }
+    }
+  }
+
+  // Determine comment: if a forward arrives and there's a held text — use it as comment
+  let commentOverride = comment
+  if (forwardMeta) {
+    const held = textHoldCache.get(telegramId)
+    if (held) {
+      textHoldCache.delete(telegramId)
+      commentOverride = held.text
+    }
+  }
+
+  await processSaveFlow(ctx, user, limits, commentOverride, forwardMeta, forwardSender)
+}
+
+async function processSaveFlow(ctx, user, limits, commentOverride, forwardMeta, forwardSender) {
+  const telegramId = ctx.from.id
+  const msg = ctx.message
+
+  const effectiveComment = commentOverride !== undefined ? commentOverride : (msg.caption || '')
+
   // deduplication: check before calling AI
   const db0 = await readUserJson(user)
   if (limits.type === 'photo') {
@@ -321,7 +359,7 @@ const mode = limits.type === 'photo' || forwardMeta ? 'SAVE' : (zapisshiMatch ? 
     const photo = msg.photo[msg.photo.length - 1]
     const base64 = await getPhotoBase64(ctx, photo)
     try {
-      structured = await structure('', comment, base64, forwardSender)
+      structured = await structure('', effectiveComment, base64, forwardSender)
     } catch (e) {
       if (e.message === 'vision_unavailable') {
         return ctx.reply('Не могу прочитать скрин — опиши текстом что там написано')
@@ -329,7 +367,7 @@ const mode = limits.type === 'photo' || forwardMeta ? 'SAVE' : (zapisshiMatch ? 
       throw e
     }
   } else {
-    structured = await structure(limits.text, comment, null, forwardSender)
+    structured = await structure(limits.text, effectiveComment, null, forwardSender)
     if (limits.truncated) await ctx.reply('⚠️ Текст обрезан до 1000 символов')
   }
 
@@ -338,8 +376,8 @@ const mode = limits.type === 'photo' || forwardMeta ? 'SAVE' : (zapisshiMatch ? 
     id: uuidv4(),
     category: structured.category || 'другое',
     created_at: new Date().toISOString(),
-    comment,
-    raw: limits.text || comment,
+    comment: effectiveComment,
+    raw: limits.text || effectiveComment,
     tags: structured.tags || [],
     ...(photo0 ? { photo_unique_id: photo0.file_unique_id } : {}),
     data: Object.fromEntries(
@@ -360,7 +398,6 @@ const mode = limits.type === 'photo' || forwardMeta ? 'SAVE' : (zapisshiMatch ? 
     return ctx.reply(
       `Совпадение с существующей записью:\n\n${dupLines.join('\n')}\n\nСохраняем заново?`,
       {
-        parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [[
             { text: '✅ Да, сохранить', callback_data: `overwrite_save:${telegramId}` },
@@ -371,7 +408,6 @@ const mode = limits.type === 'photo' || forwardMeta ? 'SAVE' : (zapisshiMatch ? 
     )
   }
 
-  // always preview before saving — user can confirm, cancel, or type a correction
   pendingCache.set(String(telegramId), { structured, record })
   setTimeout(() => pendingCache.delete(String(telegramId)), 2 * 60_000)
   const previewLines = [`📇 ${capitalize(structured.category || 'другое').toUpperCase()}`]
@@ -380,7 +416,7 @@ const mode = limits.type === 'photo' || forwardMeta ? 'SAVE' : (zapisshiMatch ? 
     const sv = String(v).trim()
     if (sv && sv !== 'null' && !EMPTY_VALUES.has(sv.toLowerCase())) previewLines.push(`${k}: ${sv}`)
   })
-  if (comment) previewLines.push(`💬 "${comment}"`)
+  if (effectiveComment) previewLines.push(`💬 "${effectiveComment}"`)
   await ctx.reply(
     `Вот что понял — верно?\n\n${previewLines.join('\n')}\n\nИли напиши правку — «замени имя на Вася»`,
     {

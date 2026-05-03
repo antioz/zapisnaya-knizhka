@@ -85,7 +85,7 @@ export async function editRecord(command, record) {
     max_tokens: 600,
     temperature: 0.1
   })
-  return JSON.parse(res.choices[0].message.content.trim())
+  return parseJsonResponse(res.choices[0].message.content)
 }
 
 export async function structure(text, comment, imageBase64 = null, forwardSender = null) {
@@ -201,7 +201,7 @@ export async function search(query, records) {
     temperature: 0.1
   })
 
-  return JSON.parse(res.choices[0].message.content.trim())
+  return parseJsonResponse(res.choices[0].message.content)
 }
 
 export async function checkContentSafety(text) {

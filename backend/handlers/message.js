@@ -147,7 +147,7 @@ async function _handleMessage(ctx, bot) {
     if (pendingItem) {
       pendingCache.delete(String(telegramId))
       const txt = limits.text.trim()
-      const isEditCommand = /^(замени|измени|исправь|удали|добавь|поменяй|убери|сделай)\b/i.test(txt)
+      const isEditCommand = /^(замени|измени|исправь|удали|добавь|поменяй|убери|сделай)\b/.test(txt.toLowerCase())
       if (isEditCommand) {
         const updated = await editRecord(txt, pendingItem.record)
         await doSave(ctx, user, pendingItem.structured, updated)
@@ -316,7 +316,7 @@ async function _handleMessage(ctx, bot) {
             const pendingItem = pendingCache.get(String(telegramId))
             if (pendingItem) {
               pendingCache.delete(String(telegramId))
-              const isEdit = /^(замени|измени|исправь|удали|добавь|поменяй|убери|сделай)\b/i.test(held.text)
+              const isEdit = /^(замени|измени|исправь|удали|добавь|поменяй|убери|сделай)\b/.test(held.text.toLowerCase())
               try {
                 if (isEdit) {
                   const updated = await editRecord(held.text, pendingItem.record)
